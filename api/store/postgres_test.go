@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 // pingUntilReady pings the db up to 10 times, stopping when
@@ -12,10 +13,14 @@ import (
 // But there must be a better way.
 func pingUntilReady(db *sql.DB) error {
 	var err error
+	wait := 100 * time.Millisecond
 	for i := 0; i < 10; i++ {
 		if err = db.Ping(); err == nil {
-			break
+			return nil
 		}
+		time.Sleep(wait)
+		wait = 2 * wait
+
 	}
 	return err
 }
