@@ -2,10 +2,13 @@ package handler
 
 import (
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/pennsieve-go-api/pkg/authorizer"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
+
+var DatasetsService service.DatasetsService
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -32,7 +35,7 @@ func DatasetsServiceHandler(request events.APIGatewayV2HTTPRequest) (*events.API
 		"routeKey":  routeKey,
 		"path":      path}).Info("DatasetServiceHandler received request")
 	apiResponse, err = handleRequest()
-
+	err = DatasetsService.GetTrashcan(datasetId)
 	return apiResponse, err
 }
 

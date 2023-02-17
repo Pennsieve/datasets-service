@@ -2,63 +2,21 @@ package store
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/lib/pq"
-	"os"
 )
 
-type PostgresConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
+type DatasetsStore interface {
+	ListFiles(datasetId string) error
 }
 
-func (c *PostgresConfig) String() string {
-	port := c.Port
-	if port == "" {
-		port = "5432"
-	}
-	noSSLConfig := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
-		c.Host, port, c.User, c.Password, c.DBName)
-	if c.SSLMode == "" {
-		return noSSLConfig
-	}
-	return fmt.Sprintf("%s sslmode=%s", noSSLConfig, c.SSLMode)
+type datasetsStore struct {
+	DB *sql.DB
 }
 
-func (c *PostgresConfig) Open() (*sql.DB, error) {
-	return sql.Open("postgres", c.String())
-}
-
-func (c *PostgresConfig) OpenAtSchema(schema string) (*sql.DB, error) {
-	// Setting search_path in the connection string is a lib/pq driver extension.
-	// Might not be available with other drivers.
-	connStr := fmt.Sprintf("%s search_path=%s", c, schema)
-	return sql.Open("postgres", connStr)
-}
-
-func PostgresConfigFromEnv() *PostgresConfig {
-	return &PostgresConfig{
-		Host:     os.Getenv("POSTGRES_HOST"),
-		Port:     os.Getenv("POSTGRES_PORT"),
-		User:     os.Getenv("POSTGRES_USER"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		DBName:   os.Getenv("PENNSIEVE_DB"),
-		SSLMode:  os.Getenv("POSTGRES_SSL_MODE"),
-	}
-}
-
-func PostgresConfigForRDS() *PostgresConfig {
-	// TODO
+func (d *datasetsStore) ListFiles(datasetId string) error {
 	return nil
 }
 
-type DatasetsService interface {
-	GetTrashcan(datasetId string) error
-}
-
-type datasetService struct {
+func NewDatasetsStore(pennsieveDB *sql.DB) DatasetsStore {
+	return &datasetsStore{pennsieveDB}
 }

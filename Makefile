@@ -58,3 +58,9 @@ publish:
 	@echo ""
 	aws s3 cp $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) s3://$(LAMBDA_BUCKET)/$(SERVICE_NAME)/
 	rm -rf $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME)
+
+# Run go mod tidy on modules
+tidy:
+	cd ${WORKING_DIR}/lambda/service; go mod tidy
+	cd ${WORKING_DIR}/api; go mod tidy
+
