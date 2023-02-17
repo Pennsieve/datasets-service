@@ -30,11 +30,7 @@ test-ci:
 	docker-compose -f docker-compose.test.yml down --remove-orphans
 	@IMAGE_TAG=$(IMAGE_TAG) docker-compose -f docker-compose.test.yml up --exit-code-from=ci-tests ci-tests
 
-# Remove folders created by NEO4J docker container
 clean: docker-clean
-	rm -rf conf
-	rm -rf data
-	rm -rf plugins
 
 # Spin down active docker containers.
 docker-clean:
