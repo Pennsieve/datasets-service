@@ -3,6 +3,7 @@ package store
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestDBConnect(t *testing.T) {
@@ -15,6 +16,7 @@ func TestDBConnect(t *testing.T) {
 		}
 	}()
 	if assert.NoErrorf(t, err, "could not open postgres DB with config %s", config) {
+		time.Sleep(100 * time.Millisecond)
 		err = db.Ping()
 		assert.NoErrorf(t, err, "could not ping postgres DB with config %s", config)
 		rows, err := db.Query("SELECT name from organizations")
