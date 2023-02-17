@@ -1,10 +1,24 @@
 package store
 
 import (
+	"database/sql"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
+
+// pingUntilReady pings the db up to 10 times, stopping when
+// a ping is successful. Used because there have been problems with
+// the test DB not being fully started and ready to make connections.
+// But there must be a better way.
+func pingUntilReady(db *sql.DB) error {
+	var err error
+	for i := 0; i < 10; i++ {
+		if err = db.Ping(); err == nil {
+			break
+		}
+	}
+	return err
+}
 
 func TestDBConnect(t *testing.T) {
 	config := PostgresConfigFromEnv()
@@ -16,8 +30,7 @@ func TestDBConnect(t *testing.T) {
 		}
 	}()
 	if assert.NoErrorf(t, err, "could not open postgres DB with config %s", config) {
-		time.Sleep(10 * time.Second)
-		err = db.Ping()
+		err = pingUntilReady(db)
 		assert.NoErrorf(t, err, "could not ping postgres DB with config %s", config)
 		rows, err := db.Query("SELECT name from organizations")
 		if assert.NoError(t, err) {
@@ -31,7 +44,6 @@ func TestDBConnect(t *testing.T) {
 				}
 			}
 		}
-		err = rows.Err()
-		assert.NoError(t, err)
+		assert.NoError(t, rows.Err())
 	}
 }
