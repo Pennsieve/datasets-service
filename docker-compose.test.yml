@@ -1,4 +1,4 @@
-version: '3'
+# version: '3'
 
 networks:
   api-tests:
@@ -13,7 +13,8 @@ services:
     env_file:
       - dockertest.env
     depends_on:
-      - pennsievedb
+      pennsievedb:
+        condition: service_healthy
     environment:
       - POSTGRES_HOST=pennsievedb
     volumes:
@@ -29,7 +30,8 @@ services:
     env_file:
       - dockertest.env
     depends_on:
-      - pennsievedb-ci
+      pennsievedb-ci:
+        condition: service_healthy
     environment:
       - POSTGRES_HOST=pennsievedb-ci
     volumes:
@@ -44,9 +46,13 @@ services:
       - "5432:5432"
     networks:
       - api-tests
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q" ]
 
   pennsievedb-ci:
     image: pennsieve/pennsievedb:V20221102133799-seed
     restart: always
     networks:
       - api-tests
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q" ]
