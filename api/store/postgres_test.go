@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -17,9 +16,8 @@ func TestDBConnect(t *testing.T) {
 		}
 	}()
 	if assert.NoErrorf(t, err, "could not open postgres DB with config %s", config) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err = db.PingContext(ctx)
+		time.Sleep(10 * time.Second)
+		err = db.Ping()
 		assert.NoErrorf(t, err, "could not ping postgres DB with config %s", config)
 		rows, err := db.Query("SELECT name from organizations")
 		if assert.NoError(t, err) {

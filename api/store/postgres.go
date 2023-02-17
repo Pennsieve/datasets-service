@@ -34,7 +34,7 @@ func (c *PostgresConfig) Open() (*sql.DB, error) {
 }
 
 func (c *PostgresConfig) OpenAtSchema(schema string) (*sql.DB, error) {
-	// Setting search_path in the connection string is an lib/pq driver extension.
+	// Setting search_path in the connection string is a lib/pq driver extension.
 	// Might not be available with other drivers.
 	connStr := fmt.Sprintf("%s search_path=%s", c, schema)
 	return sql.Open("postgres", connStr)
