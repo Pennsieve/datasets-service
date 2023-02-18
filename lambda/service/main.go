@@ -16,10 +16,10 @@ func init() {
 	}
 	db, err := config.OpenAtSchema("pennsieve")
 	if err != nil {
-		panic(fmt.Sprintf("unable to open database with config %s: %s", config, err))
+		panic(fmt.Sprintf("unable to open database with config %s: %s", config.LogString(), err))
 	}
 	if err = db.Ping(); err != nil {
-		panic(fmt.Sprintf("unable to connect to database with config %s: %s", config, err))
+		panic(fmt.Sprintf("unable to connect to database with config %s: %s", config.LogString(), err))
 	}
 	logrus.Info("connected to database: ", config.LogString())
 	pgStore := store.NewDatasetsStore(db)
