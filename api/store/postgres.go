@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/lib/pq"
 )
 
@@ -14,7 +15,7 @@ type datasetsStore struct {
 }
 
 func (d *datasetsStore) ListFiles(datasetId string) error {
-	return nil
+	return fmt.Errorf("GetFiles() not implemented")
 }
 
 func NewDatasetsStore(pennsieveDB *sql.DB) DatasetsStore {
