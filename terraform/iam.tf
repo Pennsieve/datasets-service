@@ -32,8 +32,8 @@ resource "aws_iam_policy" "datasets_service_lambda_iam_policy" {
 data "aws_iam_policy_document" "datasets_service_iam_policy_document" {
 
   statement {
-    sid    = "DatasetsServiceLambdaLogsPermissions"
-    effect = "Allow"
+    sid     = "DatasetsServiceLambdaLogsPermissions"
+    effect  = "Allow"
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
@@ -45,14 +45,23 @@ data "aws_iam_policy_document" "datasets_service_iam_policy_document" {
   }
 
   statement {
-    sid    = "DatasetsServiceLambdaEC2Permissions"
-    effect = "Allow"
+    sid     = "DatasetsServiceLambdaEC2Permissions"
+    effect  = "Allow"
     actions = [
       "ec2:CreateNetworkInterface",
       "ec2:DescribeNetworkInterfaces",
       "ec2:DeleteNetworkInterface",
       "ec2:AssignPrivateIpAddresses",
       "ec2:UnassignPrivateIpAddresses"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid     = "DatasetsServiceLambdaRDSPermissions"
+    effect  = "Allow"
+    actions = [
+      "rds-db:connect"
     ]
     resources = ["*"]
   }
