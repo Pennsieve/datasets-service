@@ -33,10 +33,6 @@ func TestCallGetTrashcan(t *testing.T) {
 	}
 }
 
-func TestFail(t *testing.T) {
-	assert.True(t, false)
-}
-
 func newTestRequest(method string, path string, requestID string, queryParams map[string]string, body string) *events.APIGatewayV2HTTPRequest {
 	request := events.APIGatewayV2HTTPRequest{
 		QueryStringParameters: queryParams,
