@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/datasets-service/service/handler"
 	"github.com/sirupsen/logrus"
@@ -22,8 +21,7 @@ func init() {
 		panic(fmt.Sprintf("unable to connect to database with config %s: %s", config.LogString(), err))
 	}
 	logrus.Info("connected to database: ", config.LogString())
-	pgStore := store.NewDatasetsStore(db)
-	handler.DatasetsService = service.NewDatasetsService(pgStore)
+	handler.PennsieveDB = db
 }
 
 func main() {
