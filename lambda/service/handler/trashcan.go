@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+const (
+	DefaultLimit  = 10
+	DefaultOffset = 0
+)
+
 type TrashcanHandler struct {
 	RequestHandler
 }
@@ -31,11 +36,11 @@ func (h *TrashcanHandler) get() (*events.APIGatewayV2HTTPResponse, error) {
 	if !ok {
 		return h.logAndBuildError("query param 'dataset_id' is required", http.StatusBadRequest), nil
 	}
-	limit, err := h.queryParamAsInt("limit", 0, 100, 10)
+	limit, err := h.queryParamAsInt("limit", 0, 100, DefaultLimit)
 	if err != nil {
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	}
-	offset, err := h.queryParamAsInt("offset", 0, math.MaxInt, 0)
+	offset, err := h.queryParamAsInt("offset", 0, math.MaxInt, DefaultOffset)
 	if err != nil {
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	}

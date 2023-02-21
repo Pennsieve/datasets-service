@@ -22,7 +22,9 @@ help:
 # Run dockerized tests (can be used locally)
 test:
 	docker-compose -f docker-compose.test.yml down --remove-orphans
-	docker-compose -f docker-compose.test.yml up --exit-code-from local_tests local_tests
+	docker-compose -f docker-compose.test.yml up -d pennsievedb
+	./run-tests.sh localtest.env
+	docker-compose -f docker-compose.test.yml down --remove-orphans
 	make clean
 
 # Run dockerized tests (used on Jenkins)

@@ -22,7 +22,7 @@ type RequestHandler struct {
 	body        string
 
 	logger          *log.Entry
-	datasetsService *service.DatasetsService
+	datasetsService service.DatasetsService
 	claims          *authorizer.Claims
 }
 
@@ -78,7 +78,7 @@ func buildResponseFromString(body string, status int) *events.APIGatewayV2HTTPRe
 	return &response
 }
 
-func newService(claims *authorizer.Claims) (*service.DatasetsService, error) {
+func newService(claims *authorizer.Claims) (service.DatasetsService, error) {
 	str, err := store.NewDatasetStoreAtOrg(PennsieveDB, claims.OrgClaim.IntId)
 	if err != nil {
 		return nil, err
