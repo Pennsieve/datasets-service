@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/pennsieve/pennsieve-go-api/pkg/authorizer"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/permissions"
+	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/permissions"
 	"math"
 	"net/http"
 )

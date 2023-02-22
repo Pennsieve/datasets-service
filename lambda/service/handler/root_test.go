@@ -3,8 +3,8 @@ package handler
 import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/pennsieve/datasets-service/api/models"
-	"github.com/pennsieve/pennsieve-go-api/pkg/authorizer"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/dataset"
+	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/dataset"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"testing"

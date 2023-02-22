@@ -3,7 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/packageInfo/packageState"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"path/filepath"

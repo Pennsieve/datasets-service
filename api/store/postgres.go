@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/dbTable"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/packageInfo"
-	"github.com/pennsieve/pennsieve-go-api/pkg/models/packageInfo/packageState"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 )
 
 type PackageAttributes []packageInfo.PackageAttribute

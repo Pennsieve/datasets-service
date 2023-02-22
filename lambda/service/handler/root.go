@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/datasets-service/api/store"
-	"github.com/pennsieve/pennsieve-go-api/pkg/authorizer"
+	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
