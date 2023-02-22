@@ -19,10 +19,13 @@ help:
 	@echo "make package			- create venv and package lambda function"
 	@echo "make publish			- package and publish lambda function"
 
-# Run dockerized tests (can be used locally)
-test:
+# Start the local versions of docker services
+local-services:
 	docker-compose -f docker-compose.test.yml down --remove-orphans
 	docker-compose -f docker-compose.test.yml up -d pennsievedb
+
+# Run dockerized tests (can be used locally)
+test: local-services
 	./run-tests.sh localtest.env
 	docker-compose -f docker-compose.test.yml down --remove-orphans
 	make clean
@@ -33,6 +36,7 @@ test-ci:
 	@IMAGE_TAG=$(IMAGE_TAG) docker-compose -f docker-compose.test.yml up --exit-code-from=ci-tests ci-tests
 
 clean: docker-clean
+	rm -fR lambda/bin
 
 # Spin down active docker containers.
 docker-clean:

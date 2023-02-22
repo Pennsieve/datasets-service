@@ -18,5 +18,8 @@ func NewDatasetsService(store *store.DatasetsStore) *DatasetsServiceImpl {
 }
 
 func (s *DatasetsServiceImpl) GetTrashcan(datasetId string, limit int, offset int) (*models.TrashcanPage, error) {
-	return &models.TrashcanPage{Messages: []string{"GetTrashcan not implemented yet"}}, nil
+	return &models.TrashcanPage{
+		Limit:    limit,
+		Offset:   offset,
+		Messages: []string{"GetTrashcan not implemented yet"}}, nil
 }
