@@ -36,6 +36,14 @@ type DatasetsStore struct {
 	DB *sql.DB
 }
 
+func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (int, error) {
+	var datasetId int
+	if err := d.DB.QueryRow("SELECT id FROM datasets WHERE node_id = ?", dsNodeId).Scan(&datasetId); err != nil {
+		return 0, err
+	}
+	return datasetId, nil
+}
+
 func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageState.State, limit int, offset int) (PackagePage, error) {
 	const packagesColumns = "id, name, type, state, node_id, parent_id, dataset_id, owner_id, size, import_id, attributes, created_at, updated_at"
 	query := fmt.Sprintf("SELECT %s, COUNT(*) OVER() as total_count FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packagesColumns)

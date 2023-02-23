@@ -44,7 +44,7 @@ func (h *TrashcanHandler) get() (*events.APIGatewayV2HTTPResponse, error) {
 	if err != nil {
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	}
-	page, err := h.datasetsService.GetTrashcan(datasetID, limit, offset)
+	page, err := h.datasetsService.GetTrashcanPage(datasetID, limit, offset)
 	if err != nil {
 		h.logger.Errorf("get trashcan failed: %s", err)
 		return nil, err

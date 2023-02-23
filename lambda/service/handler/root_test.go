@@ -87,7 +87,7 @@ type MockDatasetsService struct {
 	GetTrashcanReturnError error
 }
 
-func (m *MockDatasetsService) GetTrashcan(datasetID string, limit int, offset int) (*models.TrashcanPage, error) {
+func (m *MockDatasetsService) GetTrashcanPage(datasetID string, limit int, offset int) (*models.TrashcanPage, error) {
 	m.ActualGetTrashcanArgs = GetTrashcanArgs{
 		DatasetID: datasetID,
 		Limit:     limit,
