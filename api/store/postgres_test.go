@@ -127,3 +127,35 @@ func TestGetDatasetPackagesByStatePagination(t *testing.T) {
 	assert.Len(t, nodeIdSet, 54)
 
 }
+
+func TestGetDatasetByNodeId(t *testing.T) {
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+
+	store, err := NewDatasetStoreAtOrg(db, 2)
+	assert.NoError(t, err)
+	expectedName := "Test Dataset"
+	expectedState := "READY"
+	expectedNodeId := "N:dataset:149b65da-6803-4a67-bf20-83076774a5c7"
+	expectedRole := "editor"
+	expectedStatusId := int32(1)
+	actual, err := store.GetDatasetByNodeId(expectedNodeId)
+	if assert.NoError(t, err) {
+		assert.Equal(t, expectedName, actual.Name)
+		assert.Equal(t, expectedState, actual.State)
+		assert.True(t, actual.NodeId.Valid)
+		assert.Equal(t, expectedNodeId, actual.NodeId.String)
+		assert.True(t, actual.Role.Valid)
+		assert.Equal(t, expectedRole, actual.Role.String)
+		assert.Equal(t, expectedStatusId, actual.StatusId)
+
+		assert.Equal(t, []string{}, actual.Tags)
+	}
+
+}

@@ -3,62 +3,85 @@ package store
 import (
 	"database/sql"
 	"database/sql/driver"
-	"encoding/json"
-	"errors"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 )
-
-type PackageAttributes []packageInfo.PackageAttribute
-
-func (a *PackageAttributes) Value() (driver.Value, error) {
-	return json.Marshal(a)
-}
-
-func (a *PackageAttributes) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &a)
-}
 
 type PackagePage struct {
 	TotalCount int
 	Packages   []dbTable.Package
 }
 
+type StringArray []string
+
+func (a StringArray) Value() (driver.Value, error) {
+	return pq.Array(a).Value()
+}
+
+func (a *StringArray) Scan(src any) error {
+	return pq.Array(a).Scan(src)
+}
+
 type DatasetsStore struct {
 	DB *sql.DB
 }
 
-func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (int, error) {
-	var datasetId int
-	if err := d.DB.QueryRow("SELECT id FROM datasets WHERE node_id = $1", dsNodeId).Scan(&datasetId); err != nil {
-		return 0, err
+func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, error) {
+	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
+	var ds dbTable.Dataset
+	var tags StringArray
+	var contributors StringArray
+	query := fmt.Sprintf("SELECT %s FROM datasets WHERE node_id = $1", datasetColumns)
+	if err := d.DB.QueryRow(query, dsNodeId).Scan(
+		&ds.Id,
+		&ds.Name,
+		&ds.State,
+		&ds.Description,
+		&ds.UpdatedAt,
+		&ds.CreatedAt,
+		&ds.NodeId,
+		&ds.PermissionBit,
+		&ds.Type,
+		&ds.Role,
+		&ds.Status,
+		&ds.AutomaticallyProcessPackages,
+		&ds.Licence,
+		&tags,
+		&contributors,
+		&ds.BannerId,
+		&ds.ReadmeId,
+		&ds.StatusId,
+		&ds.PublicationStatusId,
+		&ds.Size,
+		&ds.ETag,
+		&ds.DataUseAgreementId,
+		&ds.ChangelogId); err == sql.ErrNoRows {
+		return &ds, fmt.Errorf("no dataset with nodeId %s", dsNodeId)
+	} else {
+		ds.Tags = tags
+		ds.Contributors = contributors
+		return &ds, err
 	}
-	return datasetId, nil
 }
 
-func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageState.State, limit int, offset int) (PackagePage, error) {
+func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int64, state packageState.State, limit int, offset int) (*PackagePage, error) {
 	const packagesColumns = "id, name, type, state, node_id, parent_id, dataset_id, owner_id, size, import_id, attributes, created_at, updated_at"
 	query := fmt.Sprintf("SELECT %s, COUNT(*) OVER() as total_count FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packagesColumns)
 	rows, err := d.DB.Query(query,
 		state, datasetId, limit, offset)
+	var page PackagePage
 	if err != nil {
-		return PackagePage{}, err
+		return &page, err
 	}
 	defer rows.Close()
 
 	var totalCount int
-	var packages []dbTable.Package
+	packages := make([]dbTable.Package, limit)
+	i := 0
 	for rows.Next() {
-		var p dbTable.Package
-		var a PackageAttributes
+		p := &packages[i]
 		if err := rows.Scan(
 			&p.Id,
 			&p.Name,
@@ -70,20 +93,21 @@ func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageSt
 			&p.OwnerId,
 			&p.Size,
 			&p.ImportId,
-			&a,
+			&p.Attributes,
 			&p.CreatedAt,
 			&p.UpdatedAt,
 			&totalCount); err != nil {
-			return PackagePage{}, err
+			return &page, err
 		}
-		p.Attributes = a
-		packages = append(packages, p)
+		i++
 	}
 	if err := rows.Err(); err != nil {
-		return PackagePage{}, err
+		return &page, err
 	}
+	page.TotalCount = totalCount
+	page.Packages = packages[:i]
 
-	return PackagePage{TotalCount: totalCount, Packages: packages}, nil
+	return &page, nil
 }
 
 func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStore {

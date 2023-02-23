@@ -20,11 +20,11 @@ func NewDatasetsService(store *store.DatasetsStore) *DatasetsServiceImpl {
 
 func (s *DatasetsServiceImpl) GetTrashcanPage(datasetId string, limit int, offset int) (*models.TrashcanPage, error) {
 	var trashcan models.TrashcanPage
-	dsIntId, err := s.Store.GetDatasetByNodeId(datasetId)
+	dataset, err := s.Store.GetDatasetByNodeId(datasetId)
 	if err != nil {
 		return &trashcan, err
 	}
-	page, err := s.Store.GetDatasetPackagesByState(dsIntId, packageState.Deleted, limit, offset)
+	page, err := s.Store.GetDatasetPackagesByState(dataset.Id, packageState.Deleted, limit, offset)
 	if err != nil {
 		return &trashcan, err
 	}
