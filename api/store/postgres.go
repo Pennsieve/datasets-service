@@ -38,7 +38,7 @@ type DatasetsStore struct {
 
 func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (int, error) {
 	var datasetId int
-	if err := d.DB.QueryRow("SELECT id FROM datasets WHERE node_id = ?", dsNodeId).Scan(&datasetId); err != nil {
+	if err := d.DB.QueryRow("SELECT id FROM datasets WHERE node_id = $1", dsNodeId).Scan(&datasetId); err != nil {
 		return 0, err
 	}
 	return datasetId, nil
