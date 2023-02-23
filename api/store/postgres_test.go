@@ -74,11 +74,56 @@ func TestGetDatasetPackagesByState(t *testing.T) {
 
 	store, err := NewDatasetStoreAtOrg(db, 2)
 	assert.NoError(t, err)
-	packages, err := store.GetDatasetPackagesByState(1, packageState.Deleted, 5, 0)
+	packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, 5, 0)
 	assert.NoError(t, err)
-	assert.Len(t, packages, 5)
-	for _, p := range packages {
+	assert.Equal(t, 54, packagePage.TotalCount)
+	assert.Len(t, packagePage.Packages, 5)
+	for _, p := range packagePage.Packages {
 		assert.Equal(t, packageState.Deleted, p.PackageState)
 	}
+
+}
+
+func TestGetDatasetPackagesByStatePagination(t *testing.T) {
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+
+	// File inserts packages, 54 of which are deleted.
+	loadFromFile(t, db, "packages.sql")
+	defer truncate(t, db, 2, "packages")
+
+	store, err := NewDatasetStoreAtOrg(db, 2)
+	assert.NoError(t, err)
+
+	nodeIdSet := map[string]any{}
+	const limit = 10
+	offset := 0
+	// First five pages
+	for i := 0; i < 5; i++ {
+		packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, limit, offset)
+		assert.NoError(t, err)
+		assert.Equal(t, 54, packagePage.TotalCount)
+		assert.Len(t, packagePage.Packages, 10)
+		for _, p := range packagePage.Packages {
+			nodeIdSet[p.NodeId] = nil
+		}
+		offset = limit * (i + 1)
+	}
+	// Last page
+	packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, limit, offset)
+	assert.NoError(t, err)
+	assert.Equal(t, 54, packagePage.TotalCount)
+	assert.Len(t, packagePage.Packages, 4)
+	for _, p := range packagePage.Packages {
+		nodeIdSet[p.NodeId] = nil
+	}
+
+	assert.Len(t, nodeIdSet, 54)
 
 }

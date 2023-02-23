@@ -27,25 +27,32 @@ func (a *PackageAttributes) Scan(value interface{}) error {
 	return json.Unmarshal(b, &a)
 }
 
+type PackagePage struct {
+	TotalCount int
+	Packages   []dbTable.Package
+}
+
 type DatasetsStore struct {
 	DB *sql.DB
 }
 
-func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageState.State, limit int, offset int) ([]dbTable.Package, error) {
+func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageState.State, limit int, offset int) (PackagePage, error) {
 	const packagesColumns = "id, name, type, state, node_id, parent_id, dataset_id, owner_id, size, import_id, attributes, created_at, updated_at"
-	query := fmt.Sprintf("SELECT %s FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packagesColumns)
+	query := fmt.Sprintf("SELECT %s, COUNT(*) OVER() as total_count FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packagesColumns)
 	rows, err := d.DB.Query(query,
 		state, datasetId, limit, offset)
 	if err != nil {
-		return nil, err
+		return PackagePage{}, err
 	}
 	defer rows.Close()
 
+	var totalCount int
 	var packages []dbTable.Package
 	for rows.Next() {
 		var p dbTable.Package
 		var a PackageAttributes
-		if err := rows.Scan(&p.Id,
+		if err := rows.Scan(
+			&p.Id,
 			&p.Name,
 			&p.PackageType,
 			&p.PackageState,
@@ -57,17 +64,18 @@ func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int, state packageSt
 			&p.ImportId,
 			&a,
 			&p.CreatedAt,
-			&p.UpdatedAt); err != nil {
-			return nil, err
+			&p.UpdatedAt,
+			&totalCount); err != nil {
+			return PackagePage{}, err
 		}
 		p.Attributes = a
 		packages = append(packages, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return PackagePage{}, err
 	}
 
-	return packages, nil
+	return PackagePage{TotalCount: totalCount, Packages: packages}, nil
 }
 
 func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStore {
