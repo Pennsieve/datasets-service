@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -129,6 +130,7 @@ func TestGetDatasetPackagesByStatePagination(t *testing.T) {
 }
 
 func TestGetDatasetByNodeId(t *testing.T) {
+	t.Skip("Needs PR#3 for pennsieve-core-go")
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
 	defer func() {
@@ -138,24 +140,37 @@ func TestGetDatasetByNodeId(t *testing.T) {
 	}()
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 
-	store, err := NewDatasetStoreAtOrg(db, 2)
+	orgId := 3
+	store, err := NewDatasetStoreAtOrg(db, orgId)
 	assert.NoError(t, err)
-	expectedName := "Test Dataset"
-	expectedState := "READY"
-	expectedNodeId := "N:dataset:149b65da-6803-4a67-bf20-83076774a5c7"
-	expectedRole := "editor"
-	expectedStatusId := int32(1)
-	actual, err := store.GetDatasetByNodeId(expectedNodeId)
-	if assert.NoError(t, err) {
-		assert.Equal(t, expectedName, actual.Name)
-		assert.Equal(t, expectedState, actual.State)
-		assert.True(t, actual.NodeId.Valid)
-		assert.Equal(t, expectedNodeId, actual.NodeId.String)
-		assert.True(t, actual.Role.Valid)
-		assert.Equal(t, expectedRole, actual.Role.String)
-		assert.Equal(t, expectedStatusId, actual.StatusId)
+	input := dbTable.Dataset{
+		Id:           1,
+		Name:         "Test Dataset",
+		State:        "READY",
+		Description:  sql.NullString{},
+		NodeId:       sql.NullString{String: "N:dataset:1234", Valid: true},
+		Role:         sql.NullString{String: "editor", Valid: true},
+		Tags:         []string{"test", "sql"},
+		Contributors: []string{},
+		StatusId:     int32(1),
+	}
+	insert := fmt.Sprintf("INSERT INTO \"%d\".datasets (id, name, state, description, node_id, role, tags, contributors, status_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", orgId)
+	_, err = db.Exec(insert, input.Id, input.Name, input.State, input.Description, input.NodeId, input.Role, input.Tags, input.Contributors, input.StatusId)
+	defer truncate(t, db, orgId, "datasets")
 
-		assert.Equal(t, []string{}, actual.Tags)
+	if assert.NoError(t, err) {
+		actual, err := store.GetDatasetByNodeId(input.NodeId.String)
+		if assert.NoError(t, err) {
+			assert.Equal(t, input.Name, actual.Name)
+			assert.Equal(t, input.State, actual.State)
+			assert.Equal(t, input.NodeId, actual.NodeId)
+			assert.Equal(t, input.Role, actual.Role)
+			assert.Equal(t, input.StatusId, actual.StatusId)
+
+			assert.Equal(t, input.Tags, actual.Tags)
+			assert.Equal(t, input.Contributors, actual.Contributors)
+			assert.False(t, actual.Description.Valid)
+		}
 	}
 
 }

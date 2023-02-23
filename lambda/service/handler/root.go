@@ -79,7 +79,7 @@ func buildResponseFromString(body string, status int) *events.APIGatewayV2HTTPRe
 }
 
 func newService(claims *authorizer.Claims) (service.DatasetsService, error) {
-	str, err := store.NewDatasetStoreAtOrg(PennsieveDB, claims.OrgClaim.IntId)
+	str, err := store.NewDatasetStoreAtOrg(PennsieveDB, int(claims.OrgClaim.IntId))
 	if err != nil {
 		return nil, err
 	}

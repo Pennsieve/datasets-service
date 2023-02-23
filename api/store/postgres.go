@@ -2,7 +2,7 @@ package store
 
 import (
 	"database/sql"
-	"database/sql/driver"
+	_ "database/sql/driver"
 	"fmt"
 	"github.com/lib/pq"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
@@ -14,16 +14,6 @@ type PackagePage struct {
 	Packages   []dbTable.Package
 }
 
-type StringArray []string
-
-func (a StringArray) Value() (driver.Value, error) {
-	return pq.Array(a).Value()
-}
-
-func (a *StringArray) Scan(src any) error {
-	return pq.Array(a).Scan(src)
-}
-
 type DatasetsStore struct {
 	DB *sql.DB
 }
@@ -31,8 +21,6 @@ type DatasetsStore struct {
 func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, error) {
 	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
 	var ds dbTable.Dataset
-	var tags StringArray
-	var contributors StringArray
 	query := fmt.Sprintf("SELECT %s FROM datasets WHERE node_id = $1", datasetColumns)
 	if err := d.DB.QueryRow(query, dsNodeId).Scan(
 		&ds.Id,
@@ -48,8 +36,8 @@ func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, e
 		&ds.Status,
 		&ds.AutomaticallyProcessPackages,
 		&ds.Licence,
-		&tags,
-		&contributors,
+		pq.Array(&ds.Tags),
+		pq.Array(&ds.Contributors),
 		&ds.BannerId,
 		&ds.ReadmeId,
 		&ds.StatusId,
@@ -60,8 +48,6 @@ func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, e
 		&ds.ChangelogId); err == sql.ErrNoRows {
 		return &ds, fmt.Errorf("no dataset with nodeId %s", dsNodeId)
 	} else {
-		ds.Tags = tags
-		ds.Contributors = contributors
 		return &ds, err
 	}
 }
@@ -114,7 +100,7 @@ func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStore {
 	return &DatasetsStore{pennsieveDB}
 }
 
-func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int64) (*DatasetsStore, error) {
+func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int) (*DatasetsStore, error) {
 	_, err := pennsieveDB.Exec(fmt.Sprintf("SET search_path = %d;", orgID))
 	if err != nil {
 		return nil, err
