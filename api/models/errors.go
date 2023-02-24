@@ -10,3 +10,12 @@ type DatasetNotFoundError struct {
 func (e DatasetNotFoundError) Error() string {
 	return fmt.Sprintf("no dataset with id %s found in workspace %d", e.NodeId, e.OrgId)
 }
+
+type PackageNotFoundError struct {
+	OrgId  int
+	NodeId string
+}
+
+func (e PackageNotFoundError) Error() string {
+	return fmt.Sprintf("no package with id %s found in workspace %d", e.NodeId, e.OrgId)
+}

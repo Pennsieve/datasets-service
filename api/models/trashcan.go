@@ -9,7 +9,9 @@ type TrashcanPage struct {
 }
 
 type TrashcanItem struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Path string `json:"path"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	NodeId string `json:"node_id"`
+	Type   string `json:"type"`
+	State  string `json:"state"`
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 )
 
 type DatasetsService interface {
@@ -25,16 +24,18 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 	if err != nil {
 		return &trashcan, err
 	}
-	page, err := s.Store.GetDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted, limit, offset)
+	page, err := s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
 	if err != nil {
 		return &trashcan, err
 	}
 	packages := make([]models.TrashcanItem, len(page.Packages))
 	for i, p := range page.Packages {
 		packages[i] = models.TrashcanItem{
-			ID:   p.NodeId,
-			Name: p.Name,
-			//TODO get path from dynamodb
+			ID:     p.Id,
+			Name:   p.Name,
+			NodeId: p.NodeId,
+			Type:   p.PackageType.String(),
+			State:  p.PackageState.String(),
 		}
 	}
 	return &models.TrashcanPage{

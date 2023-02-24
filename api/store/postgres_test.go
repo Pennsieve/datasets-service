@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"path/filepath"
@@ -176,8 +177,7 @@ func TestGetDatasetByNodeId(t *testing.T) {
 
 }
 
-func TestTrashcanNavigation(t *testing.T) {
-	t.Skip("working on new query")
+func TestGetTrashcanRootPaginatedNavigation(t *testing.T) {
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
 	defer func() {
@@ -188,4 +188,50 @@ func TestTrashcanNavigation(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 	loadFromFile(t, db, "folder-nav-test.sql")
 	defer truncate(t, db, 2, "packages")
+	expectedRoot := map[string]PackageSummary{
+		"N:package:5ff98fab-d0d6-4cac-9f11-4b6ff50788e8": {
+			Name:  "root-file-deleted-1.txt",
+			Type:  packageType.Text,
+			State: packageState.Deleted,
+		},
+		"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
+			Name:  "root-dir-deleted-1",
+			Type:  packageType.Collection,
+			State: packageState.Deleted,
+		},
+		"N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745": {
+			Name:  "root-dir-1",
+			Type:  packageType.Collection,
+			State: packageState.Ready,
+		},
+	}
+	store, err := NewDatasetStoreAtOrg(db, 2)
+	if assert.NoError(t, err) {
+		rootPage, err := store.GetTrashcanRootPaginated(context.Background(), 1, 10, 0)
+		if assert.NoError(t, err) {
+			assert.Equal(t, 3, rootPage.TotalCount)
+			assert.Len(t, rootPage.Packages, 3)
+			rootSummary := summarize(rootPage.Packages)
+			assert.Equal(t, expectedRoot, rootSummary)
+		}
+	}
+
+}
+
+type PackageSummary struct {
+	Name  string
+	Type  packageType.Type
+	State packageState.State
+}
+
+func summarize(packages []dbTable.Package) map[string]PackageSummary {
+	summary := make(map[string]PackageSummary, len(packages))
+	for _, p := range packages {
+		summary[p.NodeId] = PackageSummary{
+			Name:  p.Name,
+			Type:  p.PackageType,
+			State: p.PackageState,
+		}
+	}
+	return summary
 }

@@ -37,6 +37,8 @@ func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPRe
 		switch err.(type) {
 		case models.DatasetNotFoundError:
 			return h.logAndBuildError(err.Error(), http.StatusNotFound), nil
+		case models.PackageNotFoundError:
+			return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 		default:
 			return resp, err
 		}
