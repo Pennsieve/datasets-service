@@ -7,7 +7,7 @@ import (
 )
 
 type DatasetsService interface {
-	GetTrashcanPage(ctx context.Context, datasetID string, limit int, offset int) (*models.TrashcanPage, error)
+	GetTrashcanPage(ctx context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error)
 }
 
 type DatasetsServiceImpl struct {
@@ -18,14 +18,20 @@ func NewDatasetsService(store *store.DatasetsStore) *DatasetsServiceImpl {
 	return &DatasetsServiceImpl{Store: store}
 }
 
-func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, limit int, offset int) (*models.TrashcanPage, error) {
+func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
 	var trashcan models.TrashcanPage
 	dataset, err := s.Store.GetDatasetByNodeId(ctx, datasetId)
 	if err != nil {
 		return &trashcan, err
 	}
-	page, err := s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
-	if err != nil {
+	var page *store.PackagePage
+	var tErr error
+	if len(rootNodeId) == 0 {
+		page, tErr = s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
+	} else {
+		page, tErr = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootNodeId, limit, offset)
+	}
+	if tErr != nil {
 		return &trashcan, err
 	}
 	packages := make([]models.TrashcanItem, len(page.Packages))

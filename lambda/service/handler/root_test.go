@@ -11,26 +11,36 @@ import (
 	"testing"
 )
 
+type queryParamMap map[string]string
+
 func TestCallGetTrashcan(t *testing.T) {
 	expectedDatasetID := "N:Dataset:1234"
-	req := newTestRequest("GET",
-		"/datasets/trashcan",
-		"getTrashcanRequestID",
-		map[string]string{"dataset_id": expectedDatasetID},
-		"")
-	datasetsService := MockDatasetsService{}
-	claims := authorizer.Claims{
-		DatasetClaim: dataset.Claim{
-			Role:   dataset.Viewer,
-			NodeId: expectedDatasetID,
-			IntId:  1234,
-		}}
-	handler := newTestHandler(req, &claims, &datasetsService)
-	_, err := handler.handle(context.Background())
-	if assert.NoError(t, err) {
-		assert.Equal(t, expectedDatasetID, datasetsService.ActualGetTrashcanArgs.DatasetID)
-		assert.Equal(t, DefaultLimit, datasetsService.ActualGetTrashcanArgs.Limit)
-		assert.Equal(t, DefaultOffset, datasetsService.ActualGetTrashcanArgs.Offset)
+	for tName, expectedQueryParams := range map[string]queryParamMap{
+		"without root_node_id param": {"dataset_id": expectedDatasetID},
+		"with root_node_id param":    {"dataset_id": expectedDatasetID, "root_node_id": "N:collection:abcd"},
+	} {
+		req := newTestRequest("GET",
+			"/datasets/trashcan",
+			"getTrashcanRequestID",
+			expectedQueryParams,
+			"")
+		datasetsService := MockDatasetsService{}
+		claims := authorizer.Claims{
+			DatasetClaim: dataset.Claim{
+				Role:   dataset.Viewer,
+				NodeId: expectedDatasetID,
+				IntId:  1234,
+			}}
+		handler := newTestHandler(req, &claims, &datasetsService)
+		t.Run(tName, func(t *testing.T) {
+			_, err := handler.handle(context.Background())
+			if assert.NoError(t, err) {
+				assert.Equal(t, expectedDatasetID, datasetsService.ActualGetTrashcanArgs.DatasetID)
+				assert.Equal(t, expectedQueryParams["root_node_id"], datasetsService.ActualGetTrashcanArgs.RootNodeID)
+				assert.Equal(t, DefaultLimit, datasetsService.ActualGetTrashcanArgs.Limit)
+				assert.Equal(t, DefaultOffset, datasetsService.ActualGetTrashcanArgs.Offset)
+			}
+		})
 	}
 }
 
@@ -77,9 +87,10 @@ func newTestHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.
 }
 
 type GetTrashcanArgs struct {
-	DatasetID string
-	Limit     int
-	Offset    int
+	DatasetID  string
+	RootNodeID string
+	Limit      int
+	Offset     int
 }
 
 type MockDatasetsService struct {
@@ -88,11 +99,12 @@ type MockDatasetsService struct {
 	GetTrashcanReturnError error
 }
 
-func (m *MockDatasetsService) GetTrashcanPage(_ context.Context, datasetID string, limit int, offset int) (*models.TrashcanPage, error) {
+func (m *MockDatasetsService) GetTrashcanPage(_ context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
 	m.ActualGetTrashcanArgs = GetTrashcanArgs{
-		DatasetID: datasetID,
-		Limit:     limit,
-		Offset:    offset,
+		DatasetID:  datasetID,
+		RootNodeID: rootNodeId,
+		Limit:      limit,
+		Offset:     offset,
 	}
 	if m.GetTrashcanReturnError != nil {
 		return &models.TrashcanPage{}, m.GetTrashcanReturnError

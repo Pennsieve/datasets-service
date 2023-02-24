@@ -45,7 +45,8 @@ func (h *TrashcanHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResp
 	if err != nil {
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	}
-	page, err := h.datasetsService.GetTrashcanPage(ctx, datasetID, limit, offset)
+	rootNodeId := h.request.QueryStringParameters["root_node_id"]
+	page, err := h.datasetsService.GetTrashcanPage(ctx, datasetID, rootNodeId, limit, offset)
 	if err != nil {
 		h.logger.Errorf("get trashcan failed: %s", err)
 		return nil, err
