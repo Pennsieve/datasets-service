@@ -7,7 +7,7 @@ replace github.com/pennsieve/datasets-service/api => ../../api
 require (
 	github.com/aws/aws-lambda-go v1.34.1
 	github.com/pennsieve/datasets-service/api v0.0.0-20230217205046-0ae8eb70cca8
-	github.com/pennsieve/pennsieve-go-core v1.2.1
+	github.com/pennsieve/pennsieve-go-core v1.2.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 

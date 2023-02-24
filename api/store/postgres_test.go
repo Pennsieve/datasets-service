@@ -130,7 +130,6 @@ func TestGetDatasetPackagesByStatePagination(t *testing.T) {
 }
 
 func TestGetDatasetByNodeId(t *testing.T) {
-	t.Skip("Needs PR#3 for pennsieve-core-go")
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
 	defer func() {
@@ -150,8 +149,8 @@ func TestGetDatasetByNodeId(t *testing.T) {
 		Description:  sql.NullString{},
 		NodeId:       sql.NullString{String: "N:dataset:1234", Valid: true},
 		Role:         sql.NullString{String: "editor", Valid: true},
-		Tags:         []string{"test", "sql"},
-		Contributors: []string{},
+		Tags:         dbTable.Tags{"test", "sql"},
+		Contributors: dbTable.Contributors{},
 		StatusId:     int32(1),
 	}
 	insert := fmt.Sprintf("INSERT INTO \"%d\".datasets (id, name, state, description, node_id, role, tags, contributors, status_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", orgId)

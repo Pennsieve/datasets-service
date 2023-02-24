@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.18.14
 	github.com/aws/aws-sdk-go-v2/feature/rds/auth v1.2.7
 	github.com/lib/pq v1.10.7
-	github.com/pennsieve/pennsieve-go-core v1.2.1
+	github.com/pennsieve/pennsieve-go-core v1.2.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
 )

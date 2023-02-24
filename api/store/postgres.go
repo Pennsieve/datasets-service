@@ -2,9 +2,9 @@ package store
 
 import (
 	"database/sql"
-	_ "database/sql/driver"
 	"fmt"
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
+	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 )
@@ -15,7 +15,8 @@ type PackagePage struct {
 }
 
 type DatasetsStore struct {
-	DB *sql.DB
+	DB    *sql.DB
+	OrgId int
 }
 
 func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, error) {
@@ -35,9 +36,9 @@ func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, e
 		&ds.Role,
 		&ds.Status,
 		&ds.AutomaticallyProcessPackages,
-		&ds.Licence,
-		pq.Array(&ds.Tags),
-		pq.Array(&ds.Contributors),
+		&ds.License,
+		&ds.Tags,
+		&ds.Contributors,
 		&ds.BannerId,
 		&ds.ReadmeId,
 		&ds.StatusId,
@@ -46,7 +47,7 @@ func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, e
 		&ds.ETag,
 		&ds.DataUseAgreementId,
 		&ds.ChangelogId); err == sql.ErrNoRows {
-		return &ds, fmt.Errorf("no dataset with nodeId %s", dsNodeId)
+		return &ds, models.DatasetNotFoundError{NodeId: dsNodeId, OrgId: d.OrgId}
 	} else {
 		return &ds, err
 	}
@@ -97,7 +98,7 @@ func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int64, state package
 }
 
 func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStore {
-	return &DatasetsStore{pennsieveDB}
+	return &DatasetsStore{DB: pennsieveDB}
 }
 
 func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int) (*DatasetsStore, error) {
@@ -105,5 +106,5 @@ func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int) (*DatasetsStore, error
 	if err != nil {
 		return nil, err
 	}
-	return &DatasetsStore{pennsieveDB}, nil
+	return &DatasetsStore{DB: pennsieveDB, OrgId: orgID}, nil
 }
