@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/permissions"
@@ -17,17 +18,17 @@ type TrashcanHandler struct {
 	RequestHandler
 }
 
-func (h *TrashcanHandler) handle() (*events.APIGatewayV2HTTPResponse, error) {
+func (h *TrashcanHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPResponse, error) {
 	switch h.method {
 	case "GET":
-		return h.get()
+		return h.get(ctx)
 	default:
 		return h.logAndBuildError("method not allowed: "+h.method, http.StatusMethodNotAllowed), nil
 	}
 
 }
 
-func (h *TrashcanHandler) get() (*events.APIGatewayV2HTTPResponse, error) {
+func (h *TrashcanHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResponse, error) {
 	if authorized := authorizer.HasRole(*h.claims, permissions.ViewFiles); !authorized {
 		return h.logAndBuildError("unauthorized", http.StatusUnauthorized), nil
 	}
@@ -44,7 +45,7 @@ func (h *TrashcanHandler) get() (*events.APIGatewayV2HTTPResponse, error) {
 	if err != nil {
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	}
-	page, err := h.datasetsService.GetTrashcanPage(datasetID, limit, offset)
+	page, err := h.datasetsService.GetTrashcanPage(ctx, datasetID, limit, offset)
 	if err != nil {
 		h.logger.Errorf("get trashcan failed: %s", err)
 		return nil, err

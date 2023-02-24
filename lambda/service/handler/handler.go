@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"github.com/aws/aws-lambda-go/events"
 	log "github.com/sirupsen/logrus"
@@ -19,10 +20,10 @@ func init() {
 	}
 }
 
-func DatasetsServiceHandler(request events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
+func DatasetsServiceHandler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 	handler, err := NewHandler(&request)
 	if err != nil {
 		return nil, err
 	}
-	return handler.handle()
+	return handler.handle(ctx)
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
@@ -25,7 +26,7 @@ func TestCallGetTrashcan(t *testing.T) {
 			IntId:  1234,
 		}}
 	handler := newTestHandler(req, &claims, &datasetsService)
-	_, err := handler.handle()
+	_, err := handler.handle(context.Background())
 	if assert.NoError(t, err) {
 		assert.Equal(t, expectedDatasetID, datasetsService.ActualGetTrashcanArgs.DatasetID)
 		assert.Equal(t, DefaultLimit, datasetsService.ActualGetTrashcanArgs.Limit)
@@ -87,7 +88,7 @@ type MockDatasetsService struct {
 	GetTrashcanReturnError error
 }
 
-func (m *MockDatasetsService) GetTrashcanPage(datasetID string, limit int, offset int) (*models.TrashcanPage, error) {
+func (m *MockDatasetsService) GetTrashcanPage(_ context.Context, datasetID string, limit int, offset int) (*models.TrashcanPage, error) {
 	m.ActualGetTrashcanArgs = GetTrashcanArgs{
 		DatasetID: datasetID,
 		Limit:     limit,

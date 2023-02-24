@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -19,11 +20,11 @@ type DatasetsStore struct {
 	OrgId int
 }
 
-func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, error) {
+func (d *DatasetsStore) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error) {
 	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
 	var ds dbTable.Dataset
 	query := fmt.Sprintf("SELECT %s FROM datasets WHERE node_id = $1", datasetColumns)
-	if err := d.DB.QueryRow(query, dsNodeId).Scan(
+	if err := d.DB.QueryRowContext(ctx, query, dsNodeId).Scan(
 		&ds.Id,
 		&ds.Name,
 		&ds.State,
@@ -53,10 +54,10 @@ func (d *DatasetsStore) GetDatasetByNodeId(dsNodeId string) (*dbTable.Dataset, e
 	}
 }
 
-func (d *DatasetsStore) GetDatasetPackagesByState(datasetId int64, state packageState.State, limit int, offset int) (*PackagePage, error) {
+func (d *DatasetsStore) GetDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State, limit int, offset int) (*PackagePage, error) {
 	const packagesColumns = "id, name, type, state, node_id, parent_id, dataset_id, owner_id, size, import_id, attributes, created_at, updated_at"
 	query := fmt.Sprintf("SELECT %s, COUNT(*) OVER() as total_count FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packagesColumns)
-	rows, err := d.DB.Query(query,
+	rows, err := d.DB.QueryContext(ctx, query,
 		state, datasetId, limit, offset)
 	var page PackagePage
 	if err != nil {

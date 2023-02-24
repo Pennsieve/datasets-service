@@ -1,13 +1,14 @@
 package service
 
 import (
+	"context"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 )
 
 type DatasetsService interface {
-	GetTrashcanPage(datasetID string, limit int, offset int) (*models.TrashcanPage, error)
+	GetTrashcanPage(ctx context.Context, datasetID string, limit int, offset int) (*models.TrashcanPage, error)
 }
 
 type DatasetsServiceImpl struct {
@@ -18,13 +19,13 @@ func NewDatasetsService(store *store.DatasetsStore) *DatasetsServiceImpl {
 	return &DatasetsServiceImpl{Store: store}
 }
 
-func (s *DatasetsServiceImpl) GetTrashcanPage(datasetId string, limit int, offset int) (*models.TrashcanPage, error) {
+func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, limit int, offset int) (*models.TrashcanPage, error) {
 	var trashcan models.TrashcanPage
-	dataset, err := s.Store.GetDatasetByNodeId(datasetId)
+	dataset, err := s.Store.GetDatasetByNodeId(ctx, datasetId)
 	if err != nil {
 		return &trashcan, err
 	}
-	page, err := s.Store.GetDatasetPackagesByState(dataset.Id, packageState.Deleted, limit, offset)
+	page, err := s.Store.GetDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted, limit, offset)
 	if err != nil {
 		return &trashcan, err
 	}

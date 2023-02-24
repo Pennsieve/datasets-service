@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
@@ -75,7 +76,7 @@ func TestGetDatasetPackagesByState(t *testing.T) {
 
 	store, err := NewDatasetStoreAtOrg(db, 2)
 	assert.NoError(t, err)
-	packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, 5, 0)
+	packagePage, err := store.GetDatasetPackagesByState(context.Background(), 1, packageState.Deleted, 5, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 54, packagePage.TotalCount)
 	assert.Len(t, packagePage.Packages, 5)
@@ -102,12 +103,13 @@ func TestGetDatasetPackagesByStatePagination(t *testing.T) {
 	store, err := NewDatasetStoreAtOrg(db, 2)
 	assert.NoError(t, err)
 
+	ctx := context.Background()
 	nodeIdSet := map[string]any{}
 	const limit = 10
 	offset := 0
 	// First five pages
 	for i := 0; i < 5; i++ {
-		packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, limit, offset)
+		packagePage, err := store.GetDatasetPackagesByState(ctx, 1, packageState.Deleted, limit, offset)
 		assert.NoError(t, err)
 		assert.Equal(t, 54, packagePage.TotalCount)
 		assert.Len(t, packagePage.Packages, 10)
@@ -117,7 +119,7 @@ func TestGetDatasetPackagesByStatePagination(t *testing.T) {
 		offset = limit * (i + 1)
 	}
 	// Last page
-	packagePage, err := store.GetDatasetPackagesByState(1, packageState.Deleted, limit, offset)
+	packagePage, err := store.GetDatasetPackagesByState(ctx, 1, packageState.Deleted, limit, offset)
 	assert.NoError(t, err)
 	assert.Equal(t, 54, packagePage.TotalCount)
 	assert.Len(t, packagePage.Packages, 4)
@@ -158,7 +160,7 @@ func TestGetDatasetByNodeId(t *testing.T) {
 	defer truncate(t, db, orgId, "datasets")
 
 	if assert.NoError(t, err) {
-		actual, err := store.GetDatasetByNodeId(input.NodeId.String)
+		actual, err := store.GetDatasetByNodeId(context.Background(), input.NodeId.String)
 		if assert.NoError(t, err) {
 			assert.Equal(t, input.Name, actual.Name)
 			assert.Equal(t, input.State, actual.State)
@@ -172,4 +174,18 @@ func TestGetDatasetByNodeId(t *testing.T) {
 		}
 	}
 
+}
+
+func TestTrashcanNavigation(t *testing.T) {
+	t.Skip("working on new query")
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+	loadFromFile(t, db, "folder-nav-test.sql")
+	defer truncate(t, db, 2, "packages")
 }

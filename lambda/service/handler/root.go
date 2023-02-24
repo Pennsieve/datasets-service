@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -27,12 +28,12 @@ type RequestHandler struct {
 	claims          *authorizer.Claims
 }
 
-func (h *RequestHandler) handle() (*events.APIGatewayV2HTTPResponse, error) {
+func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPResponse, error) {
 
 	switch h.path {
 	case "/datasets/trashcan":
 		trashcanHandler := TrashcanHandler{*h}
-		resp, err := trashcanHandler.handle()
+		resp, err := trashcanHandler.handle(ctx)
 		switch err.(type) {
 		case models.DatasetNotFoundError:
 			return h.logAndBuildError(err.Error(), http.StatusNotFound), nil
