@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
@@ -72,7 +73,7 @@ func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId str
 		&ds.Size,
 		&ds.ETag,
 		&ds.DataUseAgreementId,
-		&ds.ChangelogId); err == sql.ErrNoRows {
+		&ds.ChangelogId); errors.Is(err, sql.ErrNoRows) {
 		return &ds, models.DatasetNotFoundError{NodeId: dsNodeId, OrgId: d.OrgId}
 	} else {
 		return &ds, err
@@ -126,7 +127,7 @@ func (d *DatasetsStoreImpl) GetTrashcanRootPaginated(ctx context.Context, datase
 func (d *DatasetsStoreImpl) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error) {
 	var parentId int
 	if err := d.DB.QueryRowContext(ctx, "SELECT id from packages where node_id = $1", parentNodeId).Scan(&parentId); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.PackageNotFoundError{NodeId: parentNodeId, OrgId: d.OrgId}
 		}
 		return nil, err

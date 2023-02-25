@@ -150,6 +150,69 @@ func TestGetTrashcanRootPaginated(t *testing.T) {
 
 }
 
+func TestGetTrashcanPaginatedLevelOne(t *testing.T) {
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+	loadFromFile(t, db, "folder-nav-test.sql")
+	defer truncate(t, db, 2, "packages")
+	expectedLevelOneRootDir1 := map[string]PackageSummary{
+		"N:package:7a1e270b-eb23-4b26-b106-d32101399a8a": {
+			Name:  "one-file-deleted-1.csv",
+			Type:  packageType.CSV,
+			State: packageState.Deleted,
+		},
+		"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
+			Name:  "one-dir-1",
+			Type:  packageType.Collection,
+			State: packageState.Ready,
+		},
+		"N:collection:b8ab062e-e7d0-4668-b098-c322ae460820": {
+			Name:  "one-dir-deleted-1",
+			Type:  packageType.Collection,
+			State: packageState.Deleted,
+		},
+	}
+	expectedLevelOneRootDirDeleted1 := map[string]PackageSummary{
+		"N:package:8d18065b-e7d7-4792-8de4-6fc7ecb79a46": {
+			Name:  "one-file-deleted-1.csv",
+			Type:  packageType.CSV,
+			State: packageState.Deleted,
+		},
+		"N:package:40443908-a2e1-474c-8367-d04ffbda7947": {
+			Name:  "one-file-deleted-2",
+			Type:  packageType.Unsupported,
+			State: packageState.Deleted,
+		},
+		"N:collection:8397346c-b824-4ee7-a49d-892860892d41": {
+			Name:  "one-dir-deleted-1",
+			Type:  packageType.Collection,
+			State: packageState.Deleted,
+		},
+	}
+	store, err := NewDatasetStoreAtOrg(db, 2)
+	if assert.NoError(t, err) {
+		oneRootDir1Page, err := store.GetTrashcanPaginated(context.Background(), 1, "N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745", 10, 0)
+		if assert.NoError(t, err) {
+			assert.Equal(t, 3, oneRootDir1Page.TotalCount)
+			oneRootDir1Summary := summarize(oneRootDir1Page.Packages)
+			assert.Equal(t, expectedLevelOneRootDir1, oneRootDir1Summary)
+		}
+		oneRootDirDeleted1, err := store.GetTrashcanPaginated(context.Background(), 1, "N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654", 10, 0)
+		if assert.NoError(t, err) {
+			assert.Equal(t, 3, oneRootDirDeleted1.TotalCount)
+			oneRootDirDeleted1Summary := summarize(oneRootDirDeleted1.Packages)
+			assert.Equal(t, expectedLevelOneRootDirDeleted1, oneRootDirDeleted1Summary)
+		}
+	}
+
+}
+
 func TestGetTrashcanPaginated_BadPackage(t *testing.T) {
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
