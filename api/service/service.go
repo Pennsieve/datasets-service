@@ -11,10 +11,10 @@ type DatasetsService interface {
 }
 
 type DatasetsServiceImpl struct {
-	Store *store.DatasetsStore
+	Store store.DatasetsStore
 }
 
-func NewDatasetsService(store *store.DatasetsStore) *DatasetsServiceImpl {
+func NewDatasetsService(store store.DatasetsStore) *DatasetsServiceImpl {
 	return &DatasetsServiceImpl{Store: store}
 }
 
@@ -25,13 +25,12 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 		return &trashcan, err
 	}
 	var page *store.PackagePage
-	var tErr error
 	if len(rootNodeId) == 0 {
-		page, tErr = s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
+		page, err = s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
 	} else {
-		page, tErr = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootNodeId, limit, offset)
+		page, err = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootNodeId, limit, offset)
 	}
-	if tErr != nil {
+	if err != nil {
 		return &trashcan, err
 	}
 	packages := make([]models.TrashcanItem, len(page.Packages))

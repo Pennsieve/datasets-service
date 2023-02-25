@@ -7,7 +7,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"strconv"
 	"strings"
 )
@@ -41,12 +40,12 @@ type PackagePage struct {
 	Packages   []dbTable.Package
 }
 
-type DatasetsStore struct {
+type DatasetsStoreImpl struct {
 	DB    *sql.DB
 	OrgId int
 }
 
-func (d *DatasetsStore) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error) {
+func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error) {
 	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
 	var ds dbTable.Dataset
 	query := fmt.Sprintf("SELECT %s FROM datasets WHERE node_id = $1", datasetColumns)
@@ -80,50 +79,7 @@ func (d *DatasetsStore) GetDatasetByNodeId(ctx context.Context, dsNodeId string)
 	}
 }
 
-func (d *DatasetsStore) GetDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State, limit int, offset int) (*PackagePage, error) {
-	query := fmt.Sprintf("SELECT %s, COUNT(*) OVER() as total_count FROM packages WHERE state = $1 and dataset_id = $2 ORDER BY id LIMIT $3 OFFSET $4", packageColumnsString)
-	rows, err := d.DB.QueryContext(ctx, query,
-		state, datasetId, limit, offset)
-	var page PackagePage
-	if err != nil {
-		return &page, err
-	}
-	defer rows.Close()
-
-	var totalCount int
-	packages := make([]dbTable.Package, limit)
-	i := 0
-	for rows.Next() {
-		p := &packages[i]
-		if err := rows.Scan(
-			&p.Id,
-			&p.Name,
-			&p.PackageType,
-			&p.PackageState,
-			&p.NodeId,
-			&p.ParentId,
-			&p.DatasetId,
-			&p.OwnerId,
-			&p.Size,
-			&p.ImportId,
-			&p.Attributes,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-			&totalCount); err != nil {
-			return &page, err
-		}
-		i++
-	}
-	if err := rows.Err(); err != nil {
-		return &page, err
-	}
-	page.TotalCount = totalCount
-	page.Packages = packages[:i]
-
-	return &page, nil
-}
-
-func (d *DatasetsStore) queryTrashcan(ctx context.Context, query string, datasetId int64, limit int, offset int) (*PackagePage, error) {
+func (d *DatasetsStoreImpl) queryTrashcan(ctx context.Context, query string, datasetId int64, limit int, offset int) (*PackagePage, error) {
 	rows, err := d.DB.QueryContext(ctx, query, datasetId, limit, offset)
 	if err != nil {
 		return nil, err
@@ -163,13 +119,13 @@ func (d *DatasetsStore) queryTrashcan(ctx context.Context, query string, dataset
 	return &page, nil
 }
 
-func (d *DatasetsStore) GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error) {
+func (d *DatasetsStoreImpl) GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error) {
 	return d.queryTrashcan(ctx, getTrashcanRootPageQuery, datasetId, limit, offset)
 }
 
-func (d *DatasetsStore) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error) {
+func (d *DatasetsStoreImpl) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error) {
 	var parentId int
-	if err := d.DB.QueryRowContext(ctx, "SELECT id from packages where node_id = ? ", parentNodeId).Scan(&parentId); err != nil {
+	if err := d.DB.QueryRowContext(ctx, "SELECT id from packages where node_id = $1", parentNodeId).Scan(&parentId); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, models.PackageNotFoundError{NodeId: parentNodeId, OrgId: d.OrgId}
 		}
@@ -182,16 +138,16 @@ func (d *DatasetsStore) GetTrashcanPaginated(ctx context.Context, datasetId int6
 	return d.queryTrashcan(ctx, query, datasetId, limit, offset)
 }
 
-func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStore {
-	return &DatasetsStore{DB: pennsieveDB}
+func NewDatasetsStore(pennsieveDB *sql.DB) *DatasetsStoreImpl {
+	return &DatasetsStoreImpl{DB: pennsieveDB}
 }
 
-func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int) (*DatasetsStore, error) {
+func NewDatasetStoreAtOrg(pennsieveDB *sql.DB, orgID int) (*DatasetsStoreImpl, error) {
 	_, err := pennsieveDB.Exec(fmt.Sprintf("SET search_path = %d;", orgID))
 	if err != nil {
 		return nil, err
 	}
-	return &DatasetsStore{DB: pennsieveDB, OrgId: orgID}, nil
+	return &DatasetsStoreImpl{DB: pennsieveDB, OrgId: orgID}, nil
 }
 
 func qualifiedColumns(table string, columns []string) string {
@@ -200,4 +156,10 @@ func qualifiedColumns(table string, columns []string) string {
 		q[i] = fmt.Sprintf("%s.%s", table, c)
 	}
 	return strings.Join(q, ", ")
+}
+
+type DatasetsStore interface {
+	GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error)
+	GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error)
+	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error)
 }
