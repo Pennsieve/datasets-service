@@ -170,12 +170,11 @@ func (d *DatasetsStore) GetTrashcanRootPaginated(ctx context.Context, datasetId 
 func (d *DatasetsStore) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error) {
 	var parentId int
 	if err := d.DB.QueryRowContext(ctx, "SELECT id from packages where node_id = ? ", parentNodeId).Scan(&parentId); err != nil {
-		switch err.(type) {
-		case models.PackageNotFoundError:
+		if err == sql.ErrNoRows {
 			return nil, models.PackageNotFoundError{NodeId: parentNodeId, OrgId: d.OrgId}
-		default:
-			return nil, err
 		}
+		return nil, err
+
 	}
 	pIdStr := strconv.Itoa(parentId)
 	equalPIdStr := fmt.Sprintf("= %d", parentId)
