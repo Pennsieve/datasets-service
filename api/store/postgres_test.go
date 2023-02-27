@@ -109,7 +109,172 @@ func TestGetDatasetByNodeId(t *testing.T) {
 
 }
 
-func TestGetTrashcanRootPaginated(t *testing.T) {
+func TestGetTrashcanPaginated(t *testing.T) {
+	rootNodeIdToExpectedLevel := map[string]TrashcanLevel{
+		// Level zero
+		"": {
+			"N:package:5ff98fab-d0d6-4cac-9f11-4b6ff50788e8": {
+				Name:  "root-file-deleted-1.txt",
+				Type:  packageType.Text,
+				State: packageState.Deleted,
+			},
+			"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
+				Name:  "root-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+			"N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745": {
+				Name:  "root-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+		},
+		// Level one: root-dir-1
+		"N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745": {
+			"N:package:7a1e270b-eb23-4b26-b106-d32101399a8a": {
+				Name:  "one-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+			"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
+				Name:  "one-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+			"N:collection:b8ab062e-e7d0-4668-b098-c322ae460820": {
+				Name:  "one-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+		},
+		// Level two: root-dir-1/one-dir-1
+		"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
+			"N:package:b234f34b-a827-4df1-ac79-e9c0db53915c": {
+				Name:  "two-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+			"N:package:06d2e3d0-e084-4866-8bfc-206655ec4d5c": {
+				Name:  "two-file-deleted-2.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+			"N:collection:113d3c44-af35-408f-9fcc-0e4aa0b20a5d": {
+				Name:  "two-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+			"N:collection:a3d2d4a4-039c-4525-b99f-148690006b4f": {
+				Name:  "two-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+		},
+		// Level three: root-dir-1/one-dir-1/two-dir-1
+		"N:collection:113d3c44-af35-408f-9fcc-0e4aa0b20a5d": {
+			"N:package:53c00fad-426e-42d4-b242-f5237d2eec64": {
+				Name:  "three-file-deleted-1.txt",
+				Type:  packageType.Text,
+				State: packageState.Deleted,
+			},
+			"N:collection:98d2c5e1-0be5-48e1-bbc0-10290e8fc6a0": {
+				Name:  "three-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+			"N:collection:ab0ae7fd-96d1-4f61-af0c-f7b6e7ea7639": {
+				Name:  "three-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+			"N:collection:f4136743-e930-401e-88bb-e7ef34789a88": {
+				Name:  "three-dir-deleted-2",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+		},
+		// Level four: root-dir-1/one-dir-1/two-dir-1/three-dir-1
+		"N:collection:98d2c5e1-0be5-48e1-bbc0-10290e8fc6a0": {
+			"N:package:8180a4dd-bf19-4476-ae54-79018dc14821": {
+				Name:  "four-file-deleted-1.png",
+				Type:  packageType.Image,
+				State: packageState.Deleted,
+			},
+		},
+		// Level four: root-dir-1/one-dir-1/two-dir-1/three-dir-deleted-1
+		"N:collection:ab0ae7fd-96d1-4f61-af0c-f7b6e7ea7639": {
+			"N:package:67c7567e-183e-4701-8543-8630aba5fbc2": {
+				Name:  "four-file-deleted-1",
+				Type:  packageType.Unsupported,
+				State: packageState.Deleted,
+			},
+		},
+		// Level four: root-dir-1/one-dir-1/two-dir-1/three-dir-deleted-2
+		"N:collection:f4136743-e930-401e-88bb-e7ef34789a88": {
+			"N:package:c4d0049b-4cf8-4729-935c-67e9701d33b8": {
+				Name:  "four-file-deleted-1.png",
+				Type:  packageType.Image,
+				State: packageState.Deleted,
+			},
+		},
+		// Level three: root-dir-1/one-dir-1/two-dir-deleted-1
+		"N:collection:a3d2d4a4-039c-4525-b99f-148690006b4f": {
+			"N:package:14298d95-0b87-4b15-b8fe-3007980657df": {
+				Name:  "three-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+		},
+		// Level two: root-dir-1/one-dir-deleted-1
+		"N:collection:b8ab062e-e7d0-4668-b098-c322ae460820": {
+			"N:package:bb5970ae-594d-42d2-a223-f38a55eaa3b8": {
+				Name:  "two-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+		},
+		// Level one: root-dir-deleted-1
+		"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
+			"N:package:8d18065b-e7d7-4792-8de4-6fc7ecb79a46": {
+				Name:  "one-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+			"N:package:40443908-a2e1-474c-8367-d04ffbda7947": {
+				Name:  "one-file-deleted-2",
+				Type:  packageType.Unsupported,
+				State: packageState.Deleted,
+			},
+			"N:collection:8397346c-b824-4ee7-a49d-892860892d41": {
+				Name:  "one-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+		},
+		// Level two: root-dir-deleted-1/one-dir-deleted-1
+		"N:collection:8397346c-b824-4ee7-a49d-892860892d41": {
+			"N:package:d9ee5d8f-0f27-4179-ae9e-8b914a719543": {
+				Name:  "two-file-deleted-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleted,
+			},
+			"N:collection:92907aeb-a524-4b74-960c-ddda270bf1ce": {
+				Name:  "two-dir-deleted-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleted,
+			},
+		},
+		// Level three: root-dir-deleted-1/one-dir-deleted-1/two-dir-deleted-1
+		"N:collection:92907aeb-a524-4b74-960c-ddda270bf1ce": {
+			"N:package:6974bfb6-2714-4f80-8942-c34357dfeee0": {
+				Name:  "three-file-deleted-1.png",
+				Type:  packageType.Image,
+				State: packageState.Deleted,
+			},
+		},
+		// Folder with no deleted file or folder descendants
+		"N:collection:0f197fab-cb7b-4414-8f7c-27d7aafe7c53": {},
+	}
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
 	defer func() {
@@ -120,95 +285,29 @@ func TestGetTrashcanRootPaginated(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 	loadFromFile(t, db, "folder-nav-test.sql")
 	defer truncate(t, db, 2, "packages")
-	expectedRoot := map[string]PackageSummary{
-		"N:package:5ff98fab-d0d6-4cac-9f11-4b6ff50788e8": {
-			Name:  "root-file-deleted-1.txt",
-			Type:  packageType.Text,
-			State: packageState.Deleted,
-		},
-		"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
-			Name:  "root-dir-deleted-1",
-			Type:  packageType.Collection,
-			State: packageState.Deleted,
-		},
-		"N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745": {
-			Name:  "root-dir-1",
-			Type:  packageType.Collection,
-			State: packageState.Ready,
-		},
-	}
 	store, err := NewDatasetStoreAtOrg(db, 2)
 	if assert.NoError(t, err) {
-		rootPage, err := store.GetTrashcanRootPaginated(context.Background(), 1, 10, 0)
-		if assert.NoError(t, err) {
-			assert.Equal(t, 3, rootPage.TotalCount)
-			assert.Len(t, rootPage.Packages, 3)
-			rootSummary := summarize(rootPage.Packages)
-			assert.Equal(t, expectedRoot, rootSummary)
+		for rootNodeId, expectedLevel := range rootNodeIdToExpectedLevel {
+			t.Run(fmt.Sprintf("GetTrashcan starting at folder %q", rootNodeId), func(t *testing.T) {
+				testGetTrashcanLevel(t, store, rootNodeId, expectedLevel)
+			})
 		}
 	}
-
 }
 
-func TestGetTrashcanPaginatedLevelOne(t *testing.T) {
-	config := PostgresConfigFromEnv()
-	db, err := config.Open()
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	assert.NoErrorf(t, err, "could not open DB with config %s", config)
-	loadFromFile(t, db, "folder-nav-test.sql")
-	defer truncate(t, db, 2, "packages")
-	expectedLevelOneRootDir1 := map[string]PackageSummary{
-		"N:package:7a1e270b-eb23-4b26-b106-d32101399a8a": {
-			Name:  "one-file-deleted-1.csv",
-			Type:  packageType.CSV,
-			State: packageState.Deleted,
-		},
-		"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
-			Name:  "one-dir-1",
-			Type:  packageType.Collection,
-			State: packageState.Ready,
-		},
-		"N:collection:b8ab062e-e7d0-4668-b098-c322ae460820": {
-			Name:  "one-dir-deleted-1",
-			Type:  packageType.Collection,
-			State: packageState.Deleted,
-		},
+func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootNodeId string, expectedLevel TrashcanLevel) {
+	var page *PackagePage
+	var err error
+	if len(rootNodeId) == 0 {
+		page, err = store.GetTrashcanRootPaginated(context.Background(), 1, 10, 0)
+	} else {
+		page, err = store.GetTrashcanPaginated(context.Background(), 1, rootNodeId, 10, 0)
 	}
-	expectedLevelOneRootDirDeleted1 := map[string]PackageSummary{
-		"N:package:8d18065b-e7d7-4792-8de4-6fc7ecb79a46": {
-			Name:  "one-file-deleted-1.csv",
-			Type:  packageType.CSV,
-			State: packageState.Deleted,
-		},
-		"N:package:40443908-a2e1-474c-8367-d04ffbda7947": {
-			Name:  "one-file-deleted-2",
-			Type:  packageType.Unsupported,
-			State: packageState.Deleted,
-		},
-		"N:collection:8397346c-b824-4ee7-a49d-892860892d41": {
-			Name:  "one-dir-deleted-1",
-			Type:  packageType.Collection,
-			State: packageState.Deleted,
-		},
-	}
-	store, err := NewDatasetStoreAtOrg(db, 2)
+
 	if assert.NoError(t, err) {
-		oneRootDir1Page, err := store.GetTrashcanPaginated(context.Background(), 1, "N:collection:180d4f48-ea2b-435c-ac69-780eeaf89745", 10, 0)
-		if assert.NoError(t, err) {
-			assert.Equal(t, 3, oneRootDir1Page.TotalCount)
-			oneRootDir1Summary := summarize(oneRootDir1Page.Packages)
-			assert.Equal(t, expectedLevelOneRootDir1, oneRootDir1Summary)
-		}
-		oneRootDirDeleted1, err := store.GetTrashcanPaginated(context.Background(), 1, "N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654", 10, 0)
-		if assert.NoError(t, err) {
-			assert.Equal(t, 3, oneRootDirDeleted1.TotalCount)
-			oneRootDirDeleted1Summary := summarize(oneRootDirDeleted1.Packages)
-			assert.Equal(t, expectedLevelOneRootDirDeleted1, oneRootDirDeleted1Summary)
-		}
+		assert.Equal(t, len(expectedLevel), page.TotalCount)
+		actualLevel := summarize(page.Packages)
+		assert.Equal(t, expectedLevel, actualLevel)
 	}
 
 }
@@ -241,7 +340,10 @@ type PackageSummary struct {
 	State packageState.State
 }
 
-func summarize(packages []dbTable.Package) map[string]PackageSummary {
+// ExpectedLevel maps a collection package id to a summary of its trashcan results
+type TrashcanLevel map[string]PackageSummary
+
+func summarize(packages []dbTable.Package) TrashcanLevel {
 	summary := make(map[string]PackageSummary, len(packages))
 	for _, p := range packages {
 		summary[p.NodeId] = PackageSummary{
