@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
@@ -33,15 +32,7 @@ func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPRe
 	switch h.path {
 	case "/datasets/trashcan":
 		trashcanHandler := TrashcanHandler{*h}
-		resp, err := trashcanHandler.handle(ctx)
-		switch err.(type) {
-		case models.DatasetNotFoundError:
-			return h.logAndBuildError(err.Error(), http.StatusNotFound), nil
-		case models.PackageNotFoundError:
-			return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
-		default:
-			return resp, err
-		}
+		return trashcanHandler.handle(ctx)
 	default:
 		return h.logAndBuildError("resource not found: "+h.path, http.StatusNotFound), nil
 	}

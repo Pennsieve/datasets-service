@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 )
 
 type DatasetsService interface {
@@ -24,11 +26,22 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 	if err != nil {
 		return &trashcan, err
 	}
+	deletedCount, err := s.Store.CountDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted)
+	if err != nil || deletedCount == 0 {
+		return &trashcan, err
+	}
 	var page *store.PackagePage
 	if len(rootNodeId) == 0 {
 		page, err = s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
 	} else {
-		page, err = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootNodeId, limit, offset)
+		rootPckg, pckgErr := s.Store.GetDatasetPackageByNodeId(ctx, dataset.Id, rootNodeId)
+		if pckgErr != nil {
+			return &trashcan, pckgErr
+		}
+		if rootPckg.PackageType != packageType.Collection {
+			return &trashcan, models.FolderNotFoundError{OrgId: s.Store.GetOrgId(ctx), NodeId: rootNodeId, ActualType: rootPckg.PackageType}
+		}
+		page, err = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootPckg.Id, limit, offset)
 	}
 	if err != nil {
 		return &trashcan, err

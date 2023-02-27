@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"strconv"
 	"strings"
 )
@@ -46,6 +47,10 @@ type DatasetsStoreImpl struct {
 	OrgId int
 }
 
+func (d *DatasetsStoreImpl) GetOrgId(_ context.Context) int {
+	return d.OrgId
+}
+
 func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error) {
 	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
 	var ds dbTable.Dataset
@@ -77,6 +82,24 @@ func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId str
 		return &ds, models.DatasetNotFoundError{NodeId: dsNodeId, OrgId: d.OrgId}
 	} else {
 		return &ds, err
+	}
+}
+
+func (d *DatasetsStoreImpl) CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error) {
+	var count int
+	err := d.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM packages where dataset_id = $1 and state = $2",
+		datasetId,
+		state).Scan(&count)
+	return count, err
+}
+
+func (d *DatasetsStoreImpl) GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*dbTable.Package, error) {
+	var pckg dbTable.Package
+	queryStr := fmt.Sprintf("SELECT %s FROM packages where dataset_id = $1 and node_id = $2", packageColumnsString)
+	if err := d.DB.QueryRowContext(ctx, queryStr, datasetId, packageNodeId).Scan(&pckg); errors.Is(err, sql.ErrNoRows) {
+		return &pckg, models.PackageNotFoundError{NodeId: packageNodeId, OrgId: d.OrgId, DatasetId: datasetId}
+	} else {
+		return &pckg, err
 	}
 }
 
@@ -124,16 +147,8 @@ func (d *DatasetsStoreImpl) GetTrashcanRootPaginated(ctx context.Context, datase
 	return d.queryTrashcan(ctx, getTrashcanRootPageQuery, datasetId, limit, offset)
 }
 
-func (d *DatasetsStoreImpl) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error) {
-	var parentId int
-	if err := d.DB.QueryRowContext(ctx, "SELECT id from packages where node_id = $1", parentNodeId).Scan(&parentId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.PackageNotFoundError{NodeId: parentNodeId, OrgId: d.OrgId}
-		}
-		return nil, err
-
-	}
-	pIdStr := strconv.Itoa(parentId)
+func (d *DatasetsStoreImpl) GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error) {
+	pIdStr := strconv.FormatInt(parentId, 10)
 	equalPIdStr := fmt.Sprintf("= %d", parentId)
 	query := fmt.Sprintf(getTrashcanPageQueryFormat, pIdStr, equalPIdStr, qualifiedColumns("p", packagesColumns), equalPIdStr)
 	return d.queryTrashcan(ctx, query, datasetId, limit, offset)
@@ -162,5 +177,8 @@ func qualifiedColumns(table string, columns []string) string {
 type DatasetsStore interface {
 	GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error)
 	GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error)
-	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentNodeId string, limit int, offset int) (*PackagePage, error)
+	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error)
+	CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error)
+	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*dbTable.Package, error)
+	GetOrgId(ctx context.Context) int
 }
