@@ -330,7 +330,7 @@ func TestGetPackageByNodeId_BadPackage(t *testing.T) {
 		badRootNodeId := "N:collection:bad"
 		_, err := store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
 		if assert.Error(t, err) {
-			assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, NodeId: badRootNodeId, DatasetId: datasetId}, err)
+			assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, Id: models.PackageNodeId(badRootNodeId), DatasetId: models.DatasetIntId(datasetId)}, err)
 		}
 	}
 

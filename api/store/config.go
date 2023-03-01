@@ -12,11 +12,16 @@ import (
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
-	ll, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
-	if err != nil {
+	if level, ok := os.LookupEnv("LOG_LEVEL"); !ok {
 		log.SetLevel(log.InfoLevel)
 	} else {
-		log.SetLevel(ll)
+		if ll, err := log.ParseLevel(level); err == nil {
+			log.SetLevel(ll)
+		} else {
+			log.SetLevel(log.InfoLevel)
+			log.Warnf("could not set log level to %q: %v", level, err)
+		}
+
 	}
 }
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
@@ -18,6 +19,15 @@ type DatasetsServiceImpl struct {
 
 func NewDatasetsService(store store.DatasetsStore) *DatasetsServiceImpl {
 	return &DatasetsServiceImpl{Store: store}
+}
+
+func NewServiceAtOrg(db *sql.DB, orgId int) (*DatasetsServiceImpl, error) {
+	str, err := store.NewDatasetStoreAtOrg(db, orgId)
+	if err != nil {
+		return nil, err
+	}
+	datasetsSvc := NewDatasetsService(str)
+	return datasetsSvc, nil
 }
 
 func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
@@ -39,7 +49,7 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 			return &trashcan, pckgErr
 		}
 		if rootPckg.PackageType != packageType.Collection {
-			return &trashcan, models.FolderNotFoundError{OrgId: s.Store.GetOrgId(ctx), NodeId: rootNodeId, ActualType: rootPckg.PackageType}
+			return &trashcan, models.FolderNotFoundError{OrgId: s.Store.GetOrgId(ctx), NodeId: rootNodeId, DatasetId: models.DatasetNodeId(datasetId), ActualType: rootPckg.PackageType}
 		}
 		page, err = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootPckg.Id, limit, offset)
 	}

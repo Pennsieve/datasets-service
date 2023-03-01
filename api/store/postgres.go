@@ -79,7 +79,7 @@ func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId str
 		&ds.ETag,
 		&ds.DataUseAgreementId,
 		&ds.ChangelogId); errors.Is(err, sql.ErrNoRows) {
-		return &ds, models.DatasetNotFoundError{NodeId: dsNodeId, OrgId: d.OrgId}
+		return &ds, models.DatasetNotFoundError{Id: models.DatasetNodeId(dsNodeId), OrgId: d.OrgId}
 	} else {
 		return &ds, err
 	}
@@ -97,7 +97,7 @@ func (d *DatasetsStoreImpl) GetDatasetPackageByNodeId(ctx context.Context, datas
 	var pckg dbTable.Package
 	queryStr := fmt.Sprintf("SELECT %s FROM packages where dataset_id = $1 and node_id = $2", packageColumnsString)
 	if err := d.DB.QueryRowContext(ctx, queryStr, datasetId, packageNodeId).Scan(&pckg); errors.Is(err, sql.ErrNoRows) {
-		return &pckg, models.PackageNotFoundError{NodeId: packageNodeId, OrgId: d.OrgId, DatasetId: datasetId}
+		return &pckg, models.PackageNotFoundError{Id: models.PackageNodeId(packageNodeId), OrgId: d.OrgId, DatasetId: models.DatasetIntId(datasetId)}
 	} else {
 		return &pckg, err
 	}

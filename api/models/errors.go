@@ -6,45 +6,34 @@ import (
 )
 
 type DatasetNotFoundError struct {
-	OrgId  int
-	NodeId string
-	Id     int
+	OrgId int
+	Id    DatasetId
 }
 
 func (e DatasetNotFoundError) Error() string {
-	if len(e.NodeId) > 0 && e.Id > 0 {
-		return fmt.Sprintf("dataset node id (%s), id (%d) not found in workspace %d", e.NodeId, e.Id, e.OrgId)
-	}
-	if len(e.NodeId) > 0 {
-		return fmt.Sprintf("dataset node id (%s) not found in workspace %d", e.NodeId, e.OrgId)
-	}
-	return fmt.Sprintf("no dataset with id (%d) found in workspace %d", e.Id, e.OrgId)
+	return fmt.Sprintf("dataset %s not found in workspace %d", e.Id, e.OrgId)
 }
 
 type PackageNotFoundError struct {
 	OrgId     int
-	NodeId    string
-	DatasetId int64
+	Id        PackageId
+	DatasetId DatasetId
 }
 
 func (e PackageNotFoundError) Error() string {
-	if e.DatasetId == 0 {
-		return fmt.Sprintf("no package with node id %q found in workspace %d", e.NodeId, e.OrgId)
-	}
-
-	return fmt.Sprintf("no package with node id %q found in dataset %d, workspace %d", e.NodeId, e.DatasetId, e.OrgId)
-
+	return fmt.Sprintf("package with node id %q not found in dataset %s, workspace %d", e.Id, e.DatasetId, e.OrgId)
 }
 
 type FolderNotFoundError struct {
 	OrgId      int
 	NodeId     string
+	DatasetId  DatasetId
 	ActualType packageType.Type
 }
 
 func (e FolderNotFoundError) Error() string {
 	if e.ActualType < 0 {
-		return fmt.Sprintf("no folder with node id %q found in workspace %d", e.NodeId, e.OrgId)
+		return fmt.Sprintf("folder with node id %q not found in dataset %s, workspace %d", e.NodeId, e.DatasetId, e.OrgId)
 	}
-	return fmt.Sprintf("no folder with node id %q found in workspace %d (actual type %s)", e.NodeId, e.OrgId, e.ActualType)
+	return fmt.Sprintf("folder with node id %q not found in dataset %s, workspace %d (actual type %s)", e.NodeId, e.DatasetId, e.OrgId, e.ActualType)
 }

@@ -24,9 +24,15 @@ local-services:
 	docker-compose -f docker-compose.test.yml down --remove-orphans
 	docker-compose -f docker-compose.test.yml up -d pennsievedb
 
-# Run dockerized tests (can be used locally)
+# Run tests locally
 test: local-services
 	./run-tests.sh localtest.env
+	docker-compose -f docker-compose.test.yml down --remove-orphans
+	make clean
+
+# Run test coverage locally
+test-coverage: local-services
+	./run-test-coverage.sh localtest.env
 	docker-compose -f docker-compose.test.yml down --remove-orphans
 	make clean
 
