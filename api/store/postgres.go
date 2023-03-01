@@ -7,8 +7,8 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"strconv"
 	"strings"
 )
@@ -39,7 +39,7 @@ var (
 
 type PackagePage struct {
 	TotalCount int
-	Packages   []dbTable.Package
+	Packages   []pgdb.Package
 }
 
 type DatasetsStoreImpl struct {
@@ -51,9 +51,9 @@ func (d *DatasetsStoreImpl) GetOrgId(_ context.Context) int {
 	return d.OrgId
 }
 
-func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error) {
+func (d *DatasetsStoreImpl) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgdb.Dataset, error) {
 	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
-	var ds dbTable.Dataset
+	var ds pgdb.Dataset
 	query := fmt.Sprintf("SELECT %s FROM datasets WHERE node_id = $1", datasetColumns)
 	if err := d.DB.QueryRowContext(ctx, query, dsNodeId).Scan(
 		&ds.Id,
@@ -93,8 +93,8 @@ func (d *DatasetsStoreImpl) CountDatasetPackagesByState(ctx context.Context, dat
 	return count, err
 }
 
-func (d *DatasetsStoreImpl) GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*dbTable.Package, error) {
-	var pckg dbTable.Package
+func (d *DatasetsStoreImpl) GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error) {
+	var pckg pgdb.Package
 	queryStr := fmt.Sprintf("SELECT %s FROM packages where dataset_id = $1 and node_id = $2", packageColumnsString)
 	if err := d.DB.QueryRowContext(ctx, queryStr, datasetId, packageNodeId).Scan(&pckg); errors.Is(err, sql.ErrNoRows) {
 		return &pckg, models.PackageNotFoundError{Id: models.PackageNodeId(packageNodeId), OrgId: d.OrgId, DatasetId: models.DatasetIntId(datasetId)}
@@ -111,7 +111,7 @@ func (d *DatasetsStoreImpl) queryTrashcan(ctx context.Context, query string, dat
 	defer rows.Close()
 	var page PackagePage
 	var totalCount int
-	packages := make([]dbTable.Package, limit)
+	packages := make([]pgdb.Package, limit)
 	i := 0
 	for rows.Next() {
 		p := &packages[i]
@@ -175,10 +175,10 @@ func qualifiedColumns(table string, columns []string) string {
 }
 
 type DatasetsStore interface {
-	GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*dbTable.Dataset, error)
+	GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgdb.Dataset, error)
 	GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error)
 	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error)
 	CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error)
-	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*dbTable.Package, error)
+	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error)
 	GetOrgId(ctx context.Context) int
 }

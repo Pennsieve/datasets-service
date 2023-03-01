@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/pennsieve/datasets-service/api/models"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/dbTable"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"path/filepath"
@@ -77,15 +77,15 @@ func TestGetDatasetByNodeId(t *testing.T) {
 	orgId := 3
 	store, err := NewDatasetStoreAtOrg(db, orgId)
 	assert.NoError(t, err)
-	input := dbTable.Dataset{
+	input := pgdb.Dataset{
 		Id:           1,
 		Name:         "Test Dataset",
 		State:        "READY",
 		Description:  sql.NullString{},
 		NodeId:       sql.NullString{String: "N:dataset:1234", Valid: true},
 		Role:         sql.NullString{String: "editor", Valid: true},
-		Tags:         dbTable.Tags{"test", "sql"},
-		Contributors: dbTable.Contributors{},
+		Tags:         pgdb.Tags{"test", "sql"},
+		Contributors: pgdb.Contributors{},
 		StatusId:     int32(1),
 	}
 	insert := fmt.Sprintf("INSERT INTO \"%d\".datasets (id, name, state, description, node_id, role, tags, contributors, status_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", orgId)
@@ -345,7 +345,7 @@ type PackageSummary struct {
 // ExpectedLevel maps a collection package id to a summary of its trashcan results
 type TrashcanLevel map[string]PackageSummary
 
-func summarize(packages []dbTable.Package) TrashcanLevel {
+func summarize(packages []pgdb.Package) TrashcanLevel {
 	summary := make(map[string]PackageSummary, len(packages))
 	for _, p := range packages {
 		summary[p.NodeId] = PackageSummary{
