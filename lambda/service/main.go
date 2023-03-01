@@ -3,24 +3,17 @@ package main
 import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/datasets-service/service/handler"
+	"github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
 	"github.com/sirupsen/logrus"
 )
 
 func init() {
-	config, err := store.PostgresConfigForRDS()
+	db, err := pgdb.ConnectRDS()
 	if err != nil {
-		panic("unable to get postgres config for RDS: " + err.Error())
+		panic(fmt.Sprintf("unable to connect to RDS database: %s", err))
 	}
-	db, err := config.OpenAtSchema("pennsieve")
-	if err != nil {
-		panic(fmt.Sprintf("unable to open database with config %s: %s", config.LogString(), err))
-	}
-	if err = db.Ping(); err != nil {
-		panic(fmt.Sprintf("unable to connect to database with config %s: %s", config.LogString(), err))
-	}
-	logrus.Info("connected to database: ", config.LogString())
+	logrus.Info("connected to RDS database")
 	handler.PennsieveDB = db
 }
 

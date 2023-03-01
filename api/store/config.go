@@ -1,11 +1,8 @@
 package store
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/rds/auth"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
@@ -72,34 +69,4 @@ func PostgresConfigFromEnv() *PostgresConfig {
 		DBName:   os.Getenv("PENNSIEVE_DB"),
 		SSLMode:  os.Getenv("POSTGRES_SSL_MODE"),
 	}
-}
-
-func PostgresConfigForRDS() (*PostgresConfig, error) {
-
-	cfg, err := awsConfig.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	region := os.Getenv("REGION")
-	dbHost := os.Getenv("RDS_PROXY_ENDPOINT")
-	dbPort := "5432"
-	dbEndpoint := fmt.Sprintf("%s:%s", dbHost, dbPort)
-	dbUser := fmt.Sprintf("%s_rds_proxy_user", os.Getenv("ENV"))
-
-	authenticationToken, err := auth.BuildAuthToken(
-		context.TODO(), dbEndpoint, region, dbUser, cfg.Credentials)
-	if err != nil {
-		return nil, err
-	}
-
-	config := PostgresConfig{
-		Host:     dbHost,
-		Port:     dbPort,
-		User:     dbUser,
-		Password: authenticationToken,
-		DBName:   "pennsieve_postgres",
-	}
-
-	return &config, nil
 }
