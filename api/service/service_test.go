@@ -13,12 +13,13 @@ import (
 )
 
 func TestGetTrashcanPageErrors(t *testing.T) {
+	orgId := 7
 	for tName, expected := range map[string]struct {
 		rootNodeId string
 		mockStore  MockDatasetsStore
 	}{
 		"dataset not found error": {"N:collection:8700", MockDatasetsStore{
-			GetDatasetByNodeIdReturn: MockReturn[*pgdb.Dataset]{Error: models.DatasetNotFoundError{OrgId: 7, Id: models.DatasetNodeId("N:dataset:9492034")}}}},
+			GetDatasetByNodeIdReturn: MockReturn[*pgdb.Dataset]{Error: models.DatasetNotFoundError{OrgId: orgId, Id: models.DatasetNodeId("N:dataset:9492034")}}}},
 		"unexpected get dataset error": {"N:collection:8700", MockDatasetsStore{
 			GetDatasetByNodeIdReturn: MockReturn[*pgdb.Dataset]{Error: errors.New("unexpected get dataset error")}}},
 		"unexpected count deleted error": {"N:collection:8700", MockDatasetsStore{
@@ -28,7 +29,7 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 		"package not found error": {"N:collection:5790", MockDatasetsStore{
 			GetDatasetByNodeIdReturn:          MockReturn[*pgdb.Dataset]{Value: &pgdb.Dataset{Id: 13}},
 			CountDatasetPackagesByStateReturn: MockReturn[int]{Value: 6},
-			GetDatasetPackageByNodeIdReturn:   MockReturn[*pgdb.Package]{Error: models.PackageNotFoundError{OrgId: 5, Id: models.PackageNodeId("N:package:bad-999"), DatasetId: models.DatasetIntId(13)}},
+			GetDatasetPackageByNodeIdReturn:   MockReturn[*pgdb.Package]{Error: models.PackageNotFoundError{OrgId: orgId, Id: models.PackageNodeId("N:package:bad-999"), DatasetId: models.DatasetIntId(13)}},
 		}},
 		"unexpected trashcan error": {"N:collection:5790", MockDatasetsStore{
 			GetDatasetByNodeIdReturn:          MockReturn[*pgdb.Dataset]{Value: &pgdb.Dataset{Id: 13}},

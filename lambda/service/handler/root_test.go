@@ -61,15 +61,14 @@ func TestTrashcanRoute(t *testing.T) {
 		expectedLimit := expectedQueryParams.expectedLimit(t)
 		expectedOffset := expectedQueryParams.expectedOffset(t)
 		mockService.OnGetTrashcanPageReturn(expectedDatasetID, expectedQueryParams["root_node_id"], expectedLimit, expectedOffset, &models.TrashcanPage{})
-		handler, err := NewHandler(req, &claims).WithService(mockService)
-		if assert.NoError(t, err) {
-			t.Run(tName, func(t *testing.T) {
-				_, err := handler.handle(context.Background())
-				if assert.NoError(t, err) {
-					mockService.AssertExpectations(t)
-				}
-			})
-		}
+		handler := NewHandler(req, &claims).WithService(mockService)
+		t.Run(tName, func(t *testing.T) {
+			_, err := handler.handle(context.Background())
+			if assert.NoError(t, err) {
+				mockService.AssertExpectations(t)
+			}
+		})
+
 	}
 }
 
@@ -129,19 +128,18 @@ func TestTrashcanRouteHandledErrors(t *testing.T) {
 			mockService.OnGetTrashcanPageFail(tData.QueryParams["dataset_id"], tData.QueryParams["root_node_id"], tData.QueryParams.expectedLimit(t), tData.QueryParams.expectedOffset(t),
 				tData.ServiceError)
 		}
-		handler, err := NewHandler(req, &claims).WithService(mockService)
-		if assert.NoError(t, err) {
-			t.Run(tName, func(t *testing.T) {
-				resp, err := handler.handle(context.Background())
-				if assert.NoError(t, err) {
-					mockService.AssertExpectations(t)
-					assert.Equal(t, tData.ExpectedStatus, resp.StatusCode)
-					for _, messageFragment := range tData.ExpectedSubMessages {
-						assert.Contains(t, resp.Body, messageFragment)
-					}
+		handler := NewHandler(req, &claims).WithService(mockService)
+		t.Run(tName, func(t *testing.T) {
+			resp, err := handler.handle(context.Background())
+			if assert.NoError(t, err) {
+				mockService.AssertExpectations(t)
+				assert.Equal(t, tData.ExpectedStatus, resp.StatusCode)
+				for _, messageFragment := range tData.ExpectedSubMessages {
+					assert.Contains(t, resp.Body, messageFragment)
 				}
-			})
-		}
+			}
+		})
+
 	}
 }
 

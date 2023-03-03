@@ -75,8 +75,7 @@ func TestGetDatasetByNodeId(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 
 	orgId := 3
-	store, err := NewDatasetStoreAtOrg(db, orgId)
-	assert.NoError(t, err)
+	store := NewDatasetStoreAtOrg(db, orgId)
 	input := pgdb.Dataset{
 		Id:           1,
 		Name:         "Test Dataset",
@@ -285,14 +284,13 @@ func TestGetTrashcanPaginated(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 	loadFromFile(t, db, "folder-nav-test.sql")
 	defer truncate(t, db, 2, "packages")
-	store, err := NewDatasetStoreAtOrg(db, 2)
-	if assert.NoError(t, err) {
-		for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
-			t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
-				testGetTrashcanLevel(t, store, rootId, expectedLevel)
-			})
-		}
+	store := NewDatasetStoreAtOrg(db, 2)
+	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
+		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
+			testGetTrashcanLevel(t, store, rootId, expectedLevel)
+		})
 	}
+
 }
 
 func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64, expectedLevel TrashcanLevel) {
@@ -325,13 +323,11 @@ func TestGetPackageByNodeId_BadPackage(t *testing.T) {
 	defer truncate(t, db, 2, "packages")
 	ordId := 2
 	datasetId := int64(1)
-	store, err := NewDatasetStoreAtOrg(db, ordId)
-	if assert.NoError(t, err) {
-		badRootNodeId := "N:collection:bad"
-		_, err := store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
-		if assert.Error(t, err) {
-			assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, Id: models.PackageNodeId(badRootNodeId), DatasetId: models.DatasetIntId(datasetId)}, err)
-		}
+	store := NewDatasetStoreAtOrg(db, ordId)
+	badRootNodeId := "N:collection:bad"
+	_, err = store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
+	if assert.Error(t, err) {
+		assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, Id: models.PackageNodeId(badRootNodeId), DatasetId: models.DatasetIntId(datasetId)}, err)
 	}
 
 }

@@ -23,13 +23,10 @@ func NewDatasetsService(store store.DatasetsStore) *DatasetsServiceImpl {
 	return &DatasetsServiceImpl{Store: store}
 }
 
-func NewServiceAtOrg(db *sql.DB, orgId int) (*DatasetsServiceImpl, error) {
-	str, err := store.NewDatasetStoreAtOrg(db, orgId)
-	if err != nil {
-		return nil, err
-	}
+func NewServiceAtOrg(db *sql.DB, orgId int) *DatasetsServiceImpl {
+	str := store.NewDatasetStoreAtOrg(db, orgId)
 	datasetsSvc := NewDatasetsService(str)
-	return datasetsSvc, nil
+	return datasetsSvc
 }
 
 func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {

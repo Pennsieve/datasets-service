@@ -32,10 +32,7 @@ func init() {
 
 func DatasetsServiceHandler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 	claims := authorizer.ParseClaims(request.RequestContext.Authorizer.Lambda)
-	handler, err := NewHandler(&request, claims).WithDefaultService()
-	if err != nil {
-		return nil, err
-	}
+	handler := NewHandler(&request, claims).WithDefaultService()
 	return handler.handle(ctx)
 }
 
@@ -89,20 +86,17 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 // WithDefaultService adds a new service.DatasetsService to the RequestHandler that
 // has been initialized to use PennsieveDB as the SQL database pointed to the
 // workspace in the RequestHandler's OrgClaim.
-func (h *RequestHandler) WithDefaultService() (*RequestHandler, error) {
-	srv, err := service.NewServiceAtOrg(PennsieveDB, int(h.claims.OrgClaim.IntId))
-	if err != nil {
-		return h, err
-	}
+func (h *RequestHandler) WithDefaultService() *RequestHandler {
+	srv := service.NewServiceAtOrg(PennsieveDB, int(h.claims.OrgClaim.IntId))
 	h.datasetsService = srv
-	return h, nil
+	return h
 }
 
 // WithService simply attaches the passed in service.DatasetsService to the RequestHandler. Used for
 // tests that do not need to use PennsieveDB.
-func (h *RequestHandler) WithService(dsService service.DatasetsService) (*RequestHandler, error) {
+func (h *RequestHandler) WithService(dsService service.DatasetsService) *RequestHandler {
 	h.datasetsService = dsService
-	return h, nil
+	return h
 }
 
 func (h *RequestHandler) logAndBuildError(message string, status int) *events.APIGatewayV2HTTPResponse {
