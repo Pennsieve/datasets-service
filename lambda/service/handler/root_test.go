@@ -7,13 +7,35 @@ import (
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dataset"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"net/http"
 	"strconv"
 	"testing"
 )
 
 type queryParamMap map[string]string
+
+func (m queryParamMap) expectedInt(t *testing.T, key string, defaultValue int) int {
+	expected := defaultValue
+	if value, ok := m[key]; ok {
+		var err error
+		expected, err = strconv.Atoi(value)
+		if err != nil {
+			assert.FailNowf(t, "could not convert map value to int", "value [%s] at key [%s], error: %s", key, value, err)
+		}
+	}
+	return expected
+}
+
+func (m queryParamMap) expectedLimit(t *testing.T) int {
+	return m.expectedInt(t, "limit", DefaultLimit)
+}
+
+func (m queryParamMap) expectedOffset(t *testing.T) int {
+	return m.expectedInt(t, "offset", DefaultOffset)
+}
 
 func TestTrashcanRoute(t *testing.T) {
 	expectedDatasetID := "N:Dataset:1234"
@@ -28,34 +50,23 @@ func TestTrashcanRoute(t *testing.T) {
 			"getTrashcanRequestID",
 			expectedQueryParams,
 			"")
-		datasetsService := MockDatasetsService{}
+		mockService := new(MockDatasetsService)
+
 		claims := authorizer.Claims{
 			DatasetClaim: dataset.Claim{
 				Role:   dataset.Viewer,
 				NodeId: expectedDatasetID,
 				IntId:  1234,
 			}}
-		expectedLimit := DefaultLimit
-		if limit, ok := expectedQueryParams["limit"]; ok {
-			var err error
-			expectedLimit, err = strconv.Atoi(limit)
-			assert.NoError(t, err)
-		}
-		expectedOffset := DefaultOffset
-		if offset, ok := expectedQueryParams["offset"]; ok {
-			var err error
-			expectedOffset, err = strconv.Atoi(offset)
-			assert.NoError(t, err)
-		}
-		handler, err := NewHandler(req, &claims).WithService(&datasetsService)
+		expectedLimit := expectedQueryParams.expectedLimit(t)
+		expectedOffset := expectedQueryParams.expectedOffset(t)
+		mockService.OnGetTrashcanPageReturn(expectedDatasetID, expectedQueryParams["root_node_id"], expectedLimit, expectedOffset, &models.TrashcanPage{})
+		handler, err := NewHandler(req, &claims).WithService(mockService)
 		if assert.NoError(t, err) {
 			t.Run(tName, func(t *testing.T) {
 				_, err := handler.handle(context.Background())
 				if assert.NoError(t, err) {
-					assert.Equal(t, expectedDatasetID, datasetsService.ActualGetTrashcanArgs.DatasetID)
-					assert.Equal(t, expectedQueryParams["root_node_id"], datasetsService.ActualGetTrashcanArgs.RootNodeID)
-					assert.Equal(t, expectedLimit, datasetsService.ActualGetTrashcanArgs.Limit)
-					assert.Equal(t, expectedOffset, datasetsService.ActualGetTrashcanArgs.Offset)
+					mockService.AssertExpectations(t)
 				}
 			})
 		}
@@ -107,18 +118,23 @@ func TestTrashcanRouteHandledErrors(t *testing.T) {
 			"getTrashcanRequestID",
 			tData.QueryParams,
 			"")
-		datasetsService := MockDatasetsService{GetTrashcanReturnError: tData.ServiceError}
+		mockService := new(MockDatasetsService)
 		claims := authorizer.Claims{
 			DatasetClaim: dataset.Claim{
 				Role:   dataset.Viewer,
 				NodeId: datasetID,
 				IntId:  1234,
 			}}
-		handler, err := NewHandler(req, &claims).WithService(&datasetsService)
+		if tData.ServiceError != nil {
+			mockService.OnGetTrashcanPageFail(tData.QueryParams["dataset_id"], tData.QueryParams["root_node_id"], tData.QueryParams.expectedLimit(t), tData.QueryParams.expectedOffset(t),
+				tData.ServiceError)
+		}
+		handler, err := NewHandler(req, &claims).WithService(mockService)
 		if assert.NoError(t, err) {
 			t.Run(tName, func(t *testing.T) {
 				resp, err := handler.handle(context.Background())
 				if assert.NoError(t, err) {
+					mockService.AssertExpectations(t)
 					assert.Equal(t, tData.ExpectedStatus, resp.StatusCode)
 					for _, messageFragment := range tData.ExpectedSubMessages {
 						assert.Contains(t, resp.Body, messageFragment)
@@ -144,28 +160,35 @@ func newTestRequest(method string, path string, requestID string, queryParams ma
 	return &request
 }
 
-type GetTrashcanArgs struct {
-	DatasetID  string
-	RootNodeID string
-	Limit      int
-	Offset     int
-}
-
 type MockDatasetsService struct {
-	ActualGetTrashcanArgs  GetTrashcanArgs
-	GetTrashcanReturnValue *models.TrashcanPage
-	GetTrashcanReturnError error
+	mock.Mock
 }
 
-func (m *MockDatasetsService) GetTrashcanPage(_ context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
-	m.ActualGetTrashcanArgs = GetTrashcanArgs{
-		DatasetID:  datasetID,
-		RootNodeID: rootNodeId,
-		Limit:      limit,
-		Offset:     offset,
-	}
-	if m.GetTrashcanReturnError != nil {
-		return &models.TrashcanPage{}, m.GetTrashcanReturnError
-	}
-	return m.GetTrashcanReturnValue, nil
+// Need to statisfy service.DatasetsService
+
+func (m *MockDatasetsService) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
+	args := m.Called(ctx, datasetId)
+	return args.Get(0).(*pgdb.Dataset), args.Error(1)
+}
+
+func (m *MockDatasetsService) GetTrashcanPage(ctx context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
+	args := m.Called(ctx, datasetID, rootNodeId, limit, offset)
+	return args.Get(0).(*models.TrashcanPage), args.Error(1)
+}
+
+// Type safe convenience methods for setting up expectations
+
+func (m *MockDatasetsService) OnGetTrashcanPageReturn(datasetID string, rootNodeId string, limit int, offset int, returnedPage *models.TrashcanPage) {
+	m.On("GetTrashcanPage", mock.Anything, datasetID, rootNodeId, limit, offset).Return(returnedPage, nil)
+}
+
+func (m *MockDatasetsService) OnGetTrashcanPageFail(datasetID string, rootNodeId string, limit int, offset int, returnedError error) {
+	m.On("GetTrashcanPage", mock.Anything, datasetID, rootNodeId, limit, offset).Return(&models.TrashcanPage{}, returnedError)
+}
+
+func (m *MockDatasetsService) OnGetDatasetReturn(datasetId string, returnedDataset *pgdb.Dataset) {
+	m.On("GetDataset", mock.Anything, datasetId).Return(returnedDataset, nil)
+}
+func (m *MockDatasetsService) OnGetDatasetFail(datasetId string, returnedError error) {
+	m.On("GetDataset", mock.Anything, datasetId).Return(&pgdb.Dataset{}, returnedError)
 }

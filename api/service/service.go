@@ -7,9 +7,11 @@ import (
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 )
 
 type DatasetsService interface {
+	GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error)
 	GetTrashcanPage(ctx context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error)
 }
 
@@ -72,4 +74,8 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 		TotalCount: page.TotalCount,
 		Packages:   packages,
 		Messages:   []string{}}, nil
+}
+
+func (s *DatasetsServiceImpl) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
+	return s.Store.GetDatasetByNodeId(ctx, datasetId)
 }
