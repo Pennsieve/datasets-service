@@ -46,13 +46,13 @@ type DatasetsStoreFactoryImpl struct {
 	DB *sql.DB
 }
 
-// NewSimpleStore returns a pointer to a DatasetsStore instance that
+// NewSimpleStore returns a DatasetsStore instance that
 // will run statements directly on database
 func (d *DatasetsStoreFactoryImpl) NewSimpleStore(orgId int) DatasetsStore {
 	return NewQueries(d.DB, orgId)
 }
 
-// ExecStoreTx will execute the function fn, passing in a pointer to a new DatasetsStore instance that
+// ExecStoreTx will execute the function fn, passing in a new DatasetsStore instance that
 // is backed by a database transaction. Any methods fn runs against the passed in DatasetsStore will run
 // in this transaction. If fn returns a non-nil error, the transaction will be rolled back.
 // Otherwise, the transaction will be committed.
