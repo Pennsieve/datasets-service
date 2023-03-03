@@ -43,11 +43,13 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 			GetTrashcanRootPaginatedReturn:    MockReturn[*store.PackagePage]{Error: errors.New("unexpected root error")},
 		}},
 	} {
-		service := NewDatasetsService(&expected.mockStore)
+		mockFactory := MockFactory{&expected.mockStore, -1}
+		service := NewDatasetsService(&mockFactory, orgId)
 		t.Run(tName, func(t *testing.T) {
 			_, err := service.GetTrashcanPage(context.Background(), "N:dataset:7890", expected.rootNodeId, 10, 0)
 			if assert.Error(t, err) {
 				assert.Equal(t, expected.mockStore.getExpectedErrors(), []error{err})
+				assert.Equal(t, orgId, mockFactory.orgId)
 			}
 		})
 	}
@@ -120,6 +122,17 @@ func (m *MockDatasetsStore) GetDatasetPackageByNodeId(_ context.Context, _ int64
 	return m.GetDatasetPackageByNodeIdReturn.ret()
 }
 
-func (m *MockDatasetsStore) GetOrgId(_ context.Context) int {
-	return 0
+type MockFactory struct {
+	mockStore *MockDatasetsStore
+	orgId     int
+}
+
+func (m *MockFactory) NewSimpleStore(orgId int) store.DatasetsStore {
+	m.orgId = orgId
+	return m.mockStore
+}
+
+func (m *MockFactory) ExecStoreTx(_ context.Context, orgId int, fn func(store store.DatasetsStore) error) error {
+	m.orgId = orgId
+	return fn(m.mockStore)
 }

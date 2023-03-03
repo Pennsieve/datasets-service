@@ -75,7 +75,7 @@ func TestGetDatasetByNodeId(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 
 	orgId := 3
-	store := NewDatasetStoreAtOrg(db, orgId)
+	store := NewQueries(db, orgId)
 	input := pgdb.Dataset{
 		Id:           1,
 		Name:         "Test Dataset",
@@ -284,7 +284,7 @@ func TestGetTrashcanPaginated(t *testing.T) {
 	assert.NoErrorf(t, err, "could not open DB with config %s", config)
 	loadFromFile(t, db, "folder-nav-test.sql")
 	defer truncate(t, db, 2, "packages")
-	store := NewDatasetStoreAtOrg(db, 2)
+	store := NewQueries(db, 2)
 	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
 		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
 			testGetTrashcanLevel(t, store, rootId, expectedLevel)
@@ -323,7 +323,7 @@ func TestGetPackageByNodeId_BadPackage(t *testing.T) {
 	defer truncate(t, db, 2, "packages")
 	ordId := 2
 	datasetId := int64(1)
-	store := NewDatasetStoreAtOrg(db, ordId)
+	store := NewQueries(db, ordId)
 	badRootNodeId := "N:collection:bad"
 	_, err = store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
 	if assert.Error(t, err) {

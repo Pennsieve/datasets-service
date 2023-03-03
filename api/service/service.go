@@ -16,63 +16,65 @@ type DatasetsService interface {
 }
 
 type DatasetsServiceImpl struct {
-	Store store.DatasetsStore
+	StoreFactory store.DatasetsStoreFactory
+	OrgId        int
 }
 
-func NewDatasetsService(store store.DatasetsStore) *DatasetsServiceImpl {
-	return &DatasetsServiceImpl{Store: store}
+func NewDatasetsService(factory store.DatasetsStoreFactory, orgId int) *DatasetsServiceImpl {
+	return &DatasetsServiceImpl{StoreFactory: factory, OrgId: orgId}
 }
 
 func NewServiceAtOrg(db *sql.DB, orgId int) *DatasetsServiceImpl {
-	str := store.NewDatasetStoreAtOrg(db, orgId)
-	datasetsSvc := NewDatasetsService(str)
+	str := store.NewStoreFactory(db)
+	datasetsSvc := NewDatasetsService(str, orgId)
 	return datasetsSvc
 }
 
 func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
-	var trashcan models.TrashcanPage
-	dataset, err := s.Store.GetDatasetByNodeId(ctx, datasetId)
-	if err != nil {
-		return &trashcan, err
-	}
-	deletedCount, err := s.Store.CountDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted)
-	if err != nil || deletedCount == 0 {
-		return &trashcan, err
-	}
-	var page *store.PackagePage
-	if len(rootNodeId) == 0 {
-		page, err = s.Store.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
-	} else {
-		rootPckg, pckgErr := s.Store.GetDatasetPackageByNodeId(ctx, dataset.Id, rootNodeId)
-		if pckgErr != nil {
-			return &trashcan, pckgErr
+	trashcan := models.TrashcanPage{Limit: limit, Offset: offset}
+	err := s.StoreFactory.ExecStoreTx(ctx, s.OrgId, func(q store.DatasetsStore) error {
+		dataset, err := q.GetDatasetByNodeId(ctx, datasetId)
+		if err != nil {
+			return err
 		}
-		if rootPckg.PackageType != packageType.Collection {
-			return &trashcan, models.FolderNotFoundError{OrgId: s.Store.GetOrgId(ctx), NodeId: rootNodeId, DatasetId: models.DatasetNodeId(datasetId), ActualType: rootPckg.PackageType}
+		deletedCount, err := q.CountDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted)
+		if err != nil || deletedCount == 0 {
+			return err
 		}
-		page, err = s.Store.GetTrashcanPaginated(ctx, dataset.Id, rootPckg.Id, limit, offset)
-	}
-	if err != nil {
-		return &trashcan, err
-	}
-	packages := make([]models.TrashcanItem, len(page.Packages))
-	for i, p := range page.Packages {
-		packages[i] = models.TrashcanItem{
-			ID:     p.Id,
-			Name:   p.Name,
-			NodeId: p.NodeId,
-			Type:   p.PackageType.String(),
-			State:  p.PackageState.String(),
+		var page *store.PackagePage
+		if len(rootNodeId) == 0 {
+			page, err = q.GetTrashcanRootPaginated(ctx, dataset.Id, limit, offset)
+		} else {
+			rootPckg, pckgErr := q.GetDatasetPackageByNodeId(ctx, dataset.Id, rootNodeId)
+			if pckgErr != nil {
+				return pckgErr
+			}
+			if rootPckg.PackageType != packageType.Collection {
+				return models.FolderNotFoundError{OrgId: s.OrgId, NodeId: rootNodeId, DatasetId: models.DatasetNodeId(datasetId), ActualType: rootPckg.PackageType}
+			}
+			page, err = q.GetTrashcanPaginated(ctx, dataset.Id, rootPckg.Id, limit, offset)
 		}
-	}
-	return &models.TrashcanPage{
-		Limit:      limit,
-		Offset:     offset,
-		TotalCount: page.TotalCount,
-		Packages:   packages,
-		Messages:   []string{}}, nil
+		if err != nil {
+			return err
+		}
+		packages := make([]models.TrashcanItem, len(page.Packages))
+		for i, p := range page.Packages {
+			packages[i] = models.TrashcanItem{
+				ID:     p.Id,
+				Name:   p.Name,
+				NodeId: p.NodeId,
+				Type:   p.PackageType.String(),
+				State:  p.PackageState.String(),
+			}
+		}
+		trashcan.TotalCount = page.TotalCount
+		trashcan.Packages = packages
+		return nil
+	})
+	return &trashcan, err
 }
 
 func (s *DatasetsServiceImpl) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
-	return s.Store.GetDatasetByNodeId(ctx, datasetId)
+	q := s.StoreFactory.NewSimpleStore(s.OrgId)
+	return q.GetDatasetByNodeId(ctx, datasetId)
 }
