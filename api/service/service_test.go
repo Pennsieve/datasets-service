@@ -44,7 +44,7 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 		}},
 	} {
 		mockFactory := MockFactory{&expected.mockStore, -1}
-		service := NewDatasetsService(&mockFactory, orgId)
+		service := NewDatasetsServiceWithFactory(&mockFactory, orgId)
 		t.Run(tName, func(t *testing.T) {
 			_, err := service.GetTrashcanPage(context.Background(), "N:dataset:7890", expected.rootNodeId, 10, 0)
 			if assert.Error(t, err) {

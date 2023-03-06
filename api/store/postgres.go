@@ -42,13 +42,22 @@ type PackagePage struct {
 	Packages   []pgdb.Package
 }
 
-type DatasetsStoreFactoryImpl struct {
+type DatasetsStoreFactory interface {
+	NewSimpleStore(orgId int) DatasetsStore
+	ExecStoreTx(ctx context.Context, orgId int, fn func(store DatasetsStore) error) error
+}
+
+func NewDatasetsStoreFactory(pennsieveDB *sql.DB) DatasetsStoreFactory {
+	return &datasetsStoreFactory{DB: pennsieveDB}
+}
+
+type datasetsStoreFactory struct {
 	DB *sql.DB
 }
 
 // NewSimpleStore returns a DatasetsStore instance that
 // will run statements directly on database
-func (d *DatasetsStoreFactoryImpl) NewSimpleStore(orgId int) DatasetsStore {
+func (d *datasetsStoreFactory) NewSimpleStore(orgId int) DatasetsStore {
 	return NewQueries(d.DB, orgId)
 }
 
@@ -56,7 +65,7 @@ func (d *DatasetsStoreFactoryImpl) NewSimpleStore(orgId int) DatasetsStore {
 // is backed by a database transaction. Any methods fn runs against the passed in DatasetsStore will run
 // in this transaction. If fn returns a non-nil error, the transaction will be rolled back.
 // Otherwise, the transaction will be committed.
-func (d *DatasetsStoreFactoryImpl) ExecStoreTx(ctx context.Context, orgId int, fn func(DatasetsStore) error) error {
+func (d *datasetsStoreFactory) ExecStoreTx(ctx context.Context, orgId int, fn func(DatasetsStore) error) error {
 	tx, err := d.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -186,10 +195,6 @@ func (q *Queries) GetTrashcanPaginated(ctx context.Context, datasetId int64, par
 	return q.queryTrashcan(ctx, query, datasetId, limit, offset)
 }
 
-func NewStoreFactory(pennsieveDB *sql.DB) *DatasetsStoreFactoryImpl {
-	return &DatasetsStoreFactoryImpl{DB: pennsieveDB}
-}
-
 func qualifiedColumns(table string, columns []string) string {
 	q := make([]string, len(columns))
 	for i, c := range columns {
@@ -204,9 +209,4 @@ type DatasetsStore interface {
 	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error)
 	CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error)
 	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error)
-}
-
-type DatasetsStoreFactory interface {
-	NewSimpleStore(orgId int) DatasetsStore
-	ExecStoreTx(ctx context.Context, orgId int, fn func(store DatasetsStore) error) error
 }

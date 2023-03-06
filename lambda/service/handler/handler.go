@@ -87,7 +87,7 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 // has been initialized to use PennsieveDB as the SQL database pointed to the
 // workspace in the RequestHandler's OrgClaim.
 func (h *RequestHandler) WithDefaultService() *RequestHandler {
-	srv := service.NewServiceAtOrg(PennsieveDB, int(h.claims.OrgClaim.IntId))
+	srv := service.NewDatasetsService(PennsieveDB, int(h.claims.OrgClaim.IntId))
 	h.datasetsService = srv
 	return h
 }

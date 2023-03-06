@@ -15,22 +15,22 @@ type DatasetsService interface {
 	GetTrashcanPage(ctx context.Context, datasetID string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error)
 }
 
-type DatasetsServiceImpl struct {
+type datasetsService struct {
 	StoreFactory store.DatasetsStoreFactory
 	OrgId        int
 }
 
-func NewDatasetsService(factory store.DatasetsStoreFactory, orgId int) *DatasetsServiceImpl {
-	return &DatasetsServiceImpl{StoreFactory: factory, OrgId: orgId}
+func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, orgId int) DatasetsService {
+	return &datasetsService{StoreFactory: factory, OrgId: orgId}
 }
 
-func NewServiceAtOrg(db *sql.DB, orgId int) *DatasetsServiceImpl {
-	str := store.NewStoreFactory(db)
-	datasetsSvc := NewDatasetsService(str, orgId)
+func NewDatasetsService(db *sql.DB, orgId int) DatasetsService {
+	str := store.NewDatasetsStoreFactory(db)
+	datasetsSvc := NewDatasetsServiceWithFactory(str, orgId)
 	return datasetsSvc
 }
 
-func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
+func (s *datasetsService) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
 	trashcan := models.TrashcanPage{Limit: limit, Offset: offset}
 	err := s.StoreFactory.ExecStoreTx(ctx, s.OrgId, func(q store.DatasetsStore) error {
 		dataset, err := q.GetDatasetByNodeId(ctx, datasetId)
@@ -74,7 +74,7 @@ func (s *DatasetsServiceImpl) GetTrashcanPage(ctx context.Context, datasetId str
 	return &trashcan, err
 }
 
-func (s *DatasetsServiceImpl) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
+func (s *datasetsService) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
 	q := s.StoreFactory.NewSimpleStore(s.OrgId)
 	return q.GetDatasetByNodeId(ctx, datasetId)
 }
