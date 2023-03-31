@@ -134,12 +134,25 @@ func (q *Queries) CountDatasetPackagesByState(ctx context.Context, datasetId int
 }
 
 func (q *Queries) GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error) {
-	var pckg pgdb.Package
+	var p pgdb.Package
 	queryStr := fmt.Sprintf(`SELECT %s FROM "%d".packages where dataset_id = $1 and node_id = $2`, packageColumnsString, q.OrgId)
-	if err := q.db.QueryRowContext(ctx, queryStr, datasetId, packageNodeId).Scan(&pckg); errors.Is(err, sql.ErrNoRows) {
-		return &pckg, models.PackageNotFoundError{Id: models.PackageNodeId(packageNodeId), OrgId: q.OrgId, DatasetId: models.DatasetIntId(datasetId)}
+	if err := q.db.QueryRowContext(ctx, queryStr, datasetId, packageNodeId).Scan(
+		&p.Id,
+		&p.Name,
+		&p.PackageType,
+		&p.PackageState,
+		&p.NodeId,
+		&p.ParentId,
+		&p.DatasetId,
+		&p.OwnerId,
+		&p.Size,
+		&p.ImportId,
+		&p.Attributes,
+		&p.CreatedAt,
+		&p.UpdatedAt); errors.Is(err, sql.ErrNoRows) {
+		return &p, models.PackageNotFoundError{Id: models.PackageNodeId(packageNodeId), OrgId: q.OrgId, DatasetId: models.DatasetIntId(datasetId)}
 	} else {
-		return &pckg, err
+		return &p, err
 	}
 }
 

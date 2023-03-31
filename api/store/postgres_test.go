@@ -310,6 +310,28 @@ func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64,
 
 }
 
+func TestGetPackageByNodeId(t *testing.T) {
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+	loadFromFile(t, db, "folder-nav-test.sql")
+	defer truncate(t, db, 2, "packages")
+	ordId := 2
+	datasetId := int64(1)
+	store := NewQueries(db, ordId)
+	nodeId := "N:collection:0f197fab-cb7b-4414-8f7c-27d7aafe7c53"
+	actual, err := store.GetDatasetPackageByNodeId(context.Background(), datasetId, nodeId)
+	if assert.NoError(t, err) {
+		assert.Equal(t, nodeId, actual.NodeId)
+	}
+
+}
+
 func TestGetPackageByNodeId_BadPackage(t *testing.T) {
 	config := PostgresConfigFromEnv()
 	db, err := config.Open()
