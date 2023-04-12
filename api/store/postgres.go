@@ -27,12 +27,12 @@ var (
 									SELECT p.id, p.node_id, p.type, p.parent_id, p.name, p.state, id_path || p.id
 									FROM "%[4]d".packages p
 									JOIN trash t ON t.id = p.parent_id
-									WHERE t.state <> 'DELETED'
+									WHERE t.state <> 'DELETED' AND t.state <> 'DELETING'
                                   )
                                   SELECT %[3]s, COUNT(*) OVER() as total_count
                                   FROM trash t JOIN "%[4]d".packages p ON t.id = p.id
                                   WHERE t.parent_id %[2]s
-  					              AND EXISTS(SELECT 1 from trash t2 where t2.state = 'DELETED' and t.id = ANY(t2.id_path))
+  					              AND EXISTS(SELECT 1 FROM trash t2 WHERE (t2.state = 'DELETED' OR t2.state = 'DELETING') and t.id = ANY(t2.id_path))
 					              ORDER BY t.name, t.id
 					              LIMIT $2 OFFSET $3;`
 )
