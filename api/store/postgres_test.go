@@ -293,6 +293,68 @@ func TestGetTrashcanPaginated(t *testing.T) {
 
 }
 
+func TestGetTrashcanDeleting(t *testing.T) {
+	rootNodeIdToExpectedLevel := map[int64]TrashcanLevel{
+		0: {"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
+			Name:  "root-dir-1",
+			Type:  packageType.Collection,
+			State: packageState.Ready,
+		},
+			"N:collection:d6542ca3-31a4-473f-a7ab-490ca4fddc63": {
+				Name:  "root-dir-2",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+		},
+		3: {}, // 3 is an empty directory
+		4: {"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
+			Name:  "one-dir-deleting-1",
+			Type:  packageType.Collection,
+			State: packageState.Deleting,
+		},
+			"N:collection:113d3c44-af35-408f-9fcc-0e4aa0b20a5d": {
+				Name:  "one-dir-empty-deleting-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleting,
+			},
+		},
+		5: {
+			"N:collection:f4136743-e930-401e-88bb-e7ef34789a88": {
+				Name:  "one-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+		},
+		9:  {}, // 9 is only set to DELETING. It's contents still have non-DELET* states and so won't be shown.
+		13: {}, // 13 is only set to DELETING. And it is empty, so nothing to show
+		15: {
+			"N:package:d9ee5d8f-0f27-4179-ae9e-8b914a719543": {
+				Name:  "two-file-deleting-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleting,
+			},
+		},
+	}
+
+	config := PostgresConfigFromEnv()
+	db, err := config.Open()
+	defer func() {
+		if db != nil {
+			assert.NoError(t, db.Close())
+		}
+	}()
+	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+	loadFromFile(t, db, "show-deleting-test.sql")
+	defer truncate(t, db, 2, "packages")
+	store := NewQueries(db, 2)
+	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
+		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
+			testGetTrashcanLevel(t, store, rootId, expectedLevel)
+		})
+	}
+
+}
+
 func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64, expectedLevel TrashcanLevel) {
 	var page *PackagePage
 	var err error
