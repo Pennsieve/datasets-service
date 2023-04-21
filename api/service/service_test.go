@@ -108,6 +108,20 @@ func TestGetTrashcanPageDeleting(t *testing.T) {
 	}
 }
 
+func TestGetTrashcanPageEmpty(t *testing.T) {
+	orgId := 7
+	mockFactory := MockFactory{mockStore: &MockDatasetsStore{
+		GetDatasetByNodeIdReturn:           MockReturn[*pgdb.Dataset]{Value: &pgdb.Dataset{Id: 17}},
+		CountDatasetPackagesByStatesReturn: MockReturn[int]{Value: 0},
+	}}
+	service := NewDatasetsServiceWithFactory(&mockFactory, orgId)
+	page, err := service.GetTrashcanPage(context.Background(), "N:dataset:dddd", "", 100, 0)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, page.Packages)
+		assert.Empty(t, page.Packages)
+	}
+}
+
 func TestGetTrashcanPageErrors(t *testing.T) {
 	orgId := 7
 	for tName, expected := range map[string]struct {

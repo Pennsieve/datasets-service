@@ -31,7 +31,7 @@ func NewDatasetsService(db *sql.DB, orgId int) DatasetsService {
 }
 
 func (s *datasetsService) GetTrashcanPage(ctx context.Context, datasetId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error) {
-	trashcan := models.TrashcanPage{Limit: limit, Offset: offset, Messages: []string{}}
+	trashcan := models.TrashcanPage{Limit: limit, Offset: offset, Packages: []models.TrashcanItem{}, Messages: []string{}}
 	err := s.StoreFactory.ExecStoreTx(ctx, s.OrgId, func(q store.DatasetsStore) error {
 		dataset, err := q.GetDatasetByNodeId(ctx, datasetId)
 		if err != nil {
