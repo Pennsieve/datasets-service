@@ -9,73 +9,15 @@ import (
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"path/filepath"
 	"testing"
-	"time"
 )
 
-// pingUntilReady pings the db up to 10 times, stopping when
-// a ping is successful. Used because there have been problems with
-// the test DB not being fully started and ready to make connections.
-// But there must be a better way.
-func pingUntilReady(db *sql.DB) error {
-	var err error
-	wait := 100 * time.Millisecond
-	for i := 0; i < 10; i++ {
-		if err = db.Ping(); err == nil {
-			return nil
-		}
-		time.Sleep(wait)
-		wait = 2 * wait
-
-	}
-	return err
-}
-
-func loadFromFile(t *testing.T, db *sql.DB, sqlFile string) {
-	path := filepath.Join("testdata", sqlFile)
-	sqlBytes, ioErr := ioutil.ReadFile(path)
-	if assert.NoError(t, ioErr) {
-		sqlStr := string(sqlBytes)
-		_, err := db.Exec(sqlStr)
-		assert.NoError(t, err)
-	}
-}
-
-func truncate(t *testing.T, db *sql.DB, orgID int, table string) {
-	query := fmt.Sprintf("TRUNCATE TABLE \"%d\".%s CASCADE", orgID, table)
-	_, err := db.Exec(query)
-	assert.NoError(t, err)
-}
-
-func TestDBConnect(t *testing.T) {
-	config := PostgresConfigFromEnv()
-
-	db, err := config.OpenAtSchema("pennsieve")
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	if assert.NoErrorf(t, err, "could not open postgres DB with config %s", config) {
-		err = pingUntilReady(db)
-		assert.NoErrorf(t, err, "could not ping postgres DB with config %s", config)
-	}
-}
-
 func TestGetDatasetByNodeId(t *testing.T) {
-	config := PostgresConfigFromEnv()
-	db, err := config.Open()
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	assert.NoErrorf(t, err, "could not open DB with config %s", config)
+	db := OpenDB(t)
+	defer db.Close()
 
 	orgId := 3
-	store := NewQueries(db, orgId)
+	store := db.Queries(orgId)
 	input := pgdb.Dataset{
 		Id:           1,
 		Name:         "Test Dataset",
@@ -88,8 +30,8 @@ func TestGetDatasetByNodeId(t *testing.T) {
 		StatusId:     int32(1),
 	}
 	insert := fmt.Sprintf("INSERT INTO \"%d\".datasets (id, name, state, description, node_id, role, tags, contributors, status_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", orgId)
-	_, err = db.Exec(insert, input.Id, input.Name, input.State, input.Description, input.NodeId, input.Role, input.Tags, input.Contributors, input.StatusId)
-	defer truncate(t, db, orgId, "datasets")
+	_, err := db.Exec(insert, input.Id, input.Name, input.State, input.Description, input.NodeId, input.Role, input.Tags, input.Contributors, input.StatusId)
+	defer db.Truncate(orgId, "datasets")
 
 	if assert.NoError(t, err) {
 		actual, err := store.GetDatasetByNodeId(context.Background(), input.NodeId.String)
@@ -274,26 +216,78 @@ func TestGetTrashcanPaginated(t *testing.T) {
 		// Folder with no deleted file or folder descendants
 		6: {},
 	}
-	config := PostgresConfigFromEnv()
-	db, err := config.Open()
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	assert.NoErrorf(t, err, "could not open DB with config %s", config)
-	loadFromFile(t, db, "folder-nav-test.sql")
-	defer truncate(t, db, 2, "packages")
+	db := OpenDB(t)
+	defer db.Close()
+
+	db.ExecSQLFile("folder-nav-test.sql")
+	defer db.Truncate(2, "packages")
 	store := NewQueries(db, 2)
 	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
 		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
-			testGetTrashcanLevel(t, store, rootId, expectedLevel)
+			CheckGetTrashcanLevel(t, store, rootId, expectedLevel)
 		})
 	}
 
 }
 
-func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64, expectedLevel TrashcanLevel) {
+func TestGetTrashcanDeleting(t *testing.T) {
+	rootNodeIdToExpectedLevel := map[int64]TrashcanLevel{
+		0: {"N:collection:82c127ca-b72b-4d8b-a0c3-a9e4c7b14654": {
+			Name:  "root-dir-1",
+			Type:  packageType.Collection,
+			State: packageState.Ready,
+		},
+			"N:collection:d6542ca3-31a4-473f-a7ab-490ca4fddc63": {
+				Name:  "root-dir-2",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+		},
+		3: {}, // 3 is an empty directory
+		4: {"N:collection:e9bfe050-b375-43a1-91ec-b519439ad011": {
+			Name:  "one-dir-deleting-1",
+			Type:  packageType.Collection,
+			State: packageState.Deleting,
+		},
+			"N:collection:113d3c44-af35-408f-9fcc-0e4aa0b20a5d": {
+				Name:  "one-dir-empty-deleting-1",
+				Type:  packageType.Collection,
+				State: packageState.Deleting,
+			},
+		},
+		5: {
+			"N:collection:f4136743-e930-401e-88bb-e7ef34789a88": {
+				Name:  "one-dir-1",
+				Type:  packageType.Collection,
+				State: packageState.Ready,
+			},
+		},
+		9:  {}, // 9 is only set to DELETING. It's contents still have non-DELET* states and so won't be shown.
+		13: {}, // 13 is only set to DELETING. And it is empty, so nothing to show
+		15: {
+			"N:package:d9ee5d8f-0f27-4179-ae9e-8b914a719543": {
+				Name:  "two-file-deleting-1.csv",
+				Type:  packageType.CSV,
+				State: packageState.Deleting,
+			},
+		},
+	}
+
+	db := OpenDB(t)
+	defer db.Close()
+
+	db.ExecSQLFile("show-deleting-test.sql")
+	defer db.Truncate(2, "packages")
+	store := db.Queries(2)
+	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
+		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
+			CheckGetTrashcanLevel(t, store, rootId, expectedLevel)
+		})
+	}
+
+}
+
+func CheckGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64, expectedLevel TrashcanLevel) {
 	var page *PackagePage
 	var err error
 	if rootFolderId == 0 {
@@ -311,43 +305,32 @@ func testGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64,
 }
 
 func TestGetPackageByNodeId(t *testing.T) {
-	config := PostgresConfigFromEnv()
-	db, err := config.Open()
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	assert.NoErrorf(t, err, "could not open DB with config %s", config)
-	loadFromFile(t, db, "folder-nav-test.sql")
-	defer truncate(t, db, 2, "packages")
+	db := OpenDB(t)
+	defer db.Close()
+
+	db.ExecSQLFile("folder-nav-test.sql")
+	defer db.Truncate(2, "packages")
 	ordId := 2
 	datasetId := int64(1)
-	store := NewQueries(db, ordId)
+	store := db.Queries(ordId)
 	nodeId := "N:collection:0f197fab-cb7b-4414-8f7c-27d7aafe7c53"
 	actual, err := store.GetDatasetPackageByNodeId(context.Background(), datasetId, nodeId)
 	if assert.NoError(t, err) {
 		assert.Equal(t, nodeId, actual.NodeId)
 	}
-
 }
 
 func TestGetPackageByNodeId_BadPackage(t *testing.T) {
-	config := PostgresConfigFromEnv()
-	db, err := config.Open()
-	defer func() {
-		if db != nil {
-			assert.NoError(t, db.Close())
-		}
-	}()
-	assert.NoErrorf(t, err, "could not open DB with config %s", config)
-	loadFromFile(t, db, "folder-nav-test.sql")
-	defer truncate(t, db, 2, "packages")
+	db := OpenDB(t)
+	defer db.Close()
+
+	db.ExecSQLFile("folder-nav-test.sql")
+	defer db.Truncate(2, "packages")
 	ordId := 2
 	datasetId := int64(1)
-	store := NewQueries(db, ordId)
+	store := db.Queries(ordId)
 	badRootNodeId := "N:collection:bad"
-	_, err = store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
+	_, err := store.GetDatasetPackageByNodeId(context.Background(), datasetId, badRootNodeId)
 	if assert.Error(t, err) {
 		assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, Id: models.PackageNodeId(badRootNodeId), DatasetId: models.DatasetIntId(datasetId)}, err)
 	}
