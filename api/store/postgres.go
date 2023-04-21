@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
@@ -126,10 +127,10 @@ func (q *Queries) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgd
 	}
 }
 
-func (q *Queries) CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error) {
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM "%d".packages where dataset_id = $1 and state = $2`, q.OrgId)
+func (q *Queries) CountDatasetPackagesByStates(ctx context.Context, datasetId int64, states []packageState.State) (int, error) {
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM "%d".packages WHERE dataset_id = $1 AND state = ANY($2)`, q.OrgId)
 	var count int
-	err := q.db.QueryRowContext(ctx, query, datasetId, state).Scan(&count)
+	err := q.db.QueryRowContext(ctx, query, datasetId, pq.Array(states)).Scan(&count)
 	return count, err
 }
 
@@ -220,6 +221,6 @@ type DatasetsStore interface {
 	GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgdb.Dataset, error)
 	GetTrashcanRootPaginated(ctx context.Context, datasetId int64, limit int, offset int) (*PackagePage, error)
 	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error)
-	CountDatasetPackagesByState(ctx context.Context, datasetId int64, state packageState.State) (int, error)
+	CountDatasetPackagesByStates(ctx context.Context, datasetId int64, states []packageState.State) (int, error)
 	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error)
 }

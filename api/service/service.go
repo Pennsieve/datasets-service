@@ -37,7 +37,7 @@ func (s *datasetsService) GetTrashcanPage(ctx context.Context, datasetId string,
 		if err != nil {
 			return err
 		}
-		deletedCount, err := q.CountDatasetPackagesByState(ctx, dataset.Id, packageState.Deleted)
+		deletedCount, err := q.CountDatasetPackagesByStates(ctx, dataset.Id, []packageState.State{packageState.Deleted, packageState.Deleting})
 		if err != nil || deletedCount == 0 {
 			return err
 		}
