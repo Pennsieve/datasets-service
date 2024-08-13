@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	pg "github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 )
@@ -36,6 +38,22 @@ var (
   					              AND EXISTS(SELECT 1 FROM trash t2 WHERE (t2.state = 'DELETED' OR t2.state = 'DELETING') and t.id = ANY(t2.id_path))
 					              ORDER BY t.name, t.id
 					              LIMIT $2 OFFSET $3;`
+	getManifestQueryFormat = `WITH RECURSIVE parents (dataset_id, state, id, name, file_name, parent_id, node_id, checksum, size, path) AS 
+								(
+									SELECT p.dataset_id, p.state, p.id, p.name, f.name, p.parent_id, p.node_id, f.checksum, f.size, array[parent_id]
+   								    FROM "%[1]d".packages p
+									FULL JOIN "%[1]d".files f ON p.id = f.package_id
+    								WHERE p.dataset_id = %[2]d AND p.parent_id IS NULL AND p.state NOT IN ('DELETING', 'DELETED')
+								UNION
+									SELECT children.dataset_id, children.state, children.id, children.name, files.name, children.parent_id, children.node_id, files.checksum, files.size, path || children.parent_id
+									FROM "%[1]d".packages children
+									FULL JOIN "%[1]d".files ON children.id = files.package_id
+									INNER JOIN parents ON
+										parents.id = children.parent_id
+									WHERE children.state NOT IN ('DELETING', 'DELETED')
+								)
+								SELECT id AS package_id, name AS package_name, file_name, path, node_id, size, checksum
+								FROM parents`
 )
 
 type PackagePage struct {
@@ -48,12 +66,13 @@ type DatasetsStoreFactory interface {
 	ExecStoreTx(ctx context.Context, orgId int, fn func(store DatasetsStore) error) error
 }
 
-func NewDatasetsStoreFactory(pennsieveDB *sql.DB) DatasetsStoreFactory {
-	return &datasetsStoreFactory{DB: pennsieveDB}
+func NewDatasetsStoreFactory(pennsieveDB *sql.DB, s3Client *s3.Client) DatasetsStoreFactory {
+	return &datasetsStoreFactory{DB: pennsieveDB, S3Client: s3Client}
 }
 
 type datasetsStoreFactory struct {
-	DB *sql.DB
+	DB       *sql.DB
+	S3Client *s3.Client
 }
 
 // NewSimpleStore returns a DatasetsStore instance that
@@ -209,6 +228,40 @@ func (q *Queries) GetTrashcanPaginated(ctx context.Context, datasetId int64, par
 	return q.queryTrashcan(ctx, query, datasetId, limit, offset)
 }
 
+func (q *Queries) GetDatasetManifest(ctx context.Context, datasetId int64) ([]models.DatasetManifest, error) {
+
+	query := fmt.Sprintf(getManifestQueryFormat, q.OrgId, datasetId)
+
+	rows, err := q.db.QueryContext(ctx, query)
+	if err != nil {
+		log.Println("ERROR: ", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var files []models.DatasetManifest
+	for rows.Next() {
+		var m models.DatasetManifest
+		err = rows.Scan(
+			&m.PackageId,
+			&m.PackageName,
+			&m.FileName,
+			pq.Array(&m.Path),
+			&m.PackageNodeId,
+			&m.Size,
+			&m.CheckSum)
+
+		if err != nil {
+			log.Println("ERROR: ", err)
+			return nil, err
+		}
+
+		files = append(files, m)
+	}
+
+	return files, nil
+
+}
+
 func qualifiedColumns(table string, columns []string) string {
 	q := make([]string, len(columns))
 	for i, c := range columns {
@@ -223,4 +276,5 @@ type DatasetsStore interface {
 	GetTrashcanPaginated(ctx context.Context, datasetId int64, parentId int64, limit int, offset int) (*PackagePage, error)
 	CountDatasetPackagesByStates(ctx context.Context, datasetId int64, states []packageState.State) (int, error)
 	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error)
+	GetDatasetManifest(ctx context.Context, datasetId int64) ([]models.DatasetManifest, error)
 }

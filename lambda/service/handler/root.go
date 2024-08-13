@@ -12,6 +12,9 @@ func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPRe
 	case "/datasets/trashcan":
 		trashcanHandler := TrashcanHandler{*h}
 		return trashcanHandler.handle(ctx)
+	case "/datasets/manifest":
+		manifestHandler := ManifestHandler{*h}
+		return manifestHandler.handle(ctx)
 	default:
 		return h.logAndBuildError("resource not found: "+h.path, http.StatusNotFound), nil
 	}

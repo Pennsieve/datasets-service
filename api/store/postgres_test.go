@@ -304,6 +304,30 @@ func CheckGetTrashcanLevel(t *testing.T, store DatasetsStore, rootFolderId int64
 
 }
 
+func TestGetManifest(t *testing.T) {
+	db := OpenDB(t)
+	defer db.Close()
+
+	db.ExecSQLFile("manifest-test.sql")
+	defer func() {
+		db.Truncate(2, "packages")
+		db.Truncate(2, "files")
+	}()
+
+	orgId := 2
+	datasetId := int64(1)
+	store := db.Queries(orgId)
+
+	actual, err := store.GetDatasetManifest(context.Background(), datasetId)
+
+	if assert.NoError(t, err) {
+		// Should ignore DELETED packages
+		// Should include two results for package with multiple source files.
+		assert.Len(t, actual, 10, "Incorrect number of results.")
+	}
+
+}
+
 func TestGetPackageByNodeId(t *testing.T) {
 	db := OpenDB(t)
 	defer db.Close()
@@ -334,6 +358,12 @@ func TestGetPackageByNodeId_BadPackage(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, models.PackageNotFoundError{OrgId: ordId, Id: models.PackageNodeId(badRootNodeId), DatasetId: models.DatasetIntId(datasetId)}, err)
 	}
+
+}
+
+func testGetManifest(t *testing.T) {
+	db := OpenDB(t)
+	defer db.Close()
 
 }
 
