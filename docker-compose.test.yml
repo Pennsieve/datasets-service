@@ -5,6 +5,26 @@ networks:
     driver: bridge
 
 services:
+  local_tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    env_file:
+      - dockertest.env
+    depends_on:
+      - pennsievedb-ci
+      - minio-ci
+    environment:
+      - POSTGRES_HOST=pennsievedb-ci
+      - MINIO_URL=http://minio-ci:9000
+      - MANIFEST_FILES_BUCKET=test-manifest-bucket
+    volumes:
+      - $PWD:/go/src/github.com/pennsieve/datasets-service
+    networks:
+      - api-tests
+
+
+
   # Test Container for Jenkins
   ci-tests:
     build:
@@ -14,8 +34,11 @@ services:
       - dockertest.env
     depends_on:
       - pennsievedb-ci
+      - minio-ci
     environment:
       - POSTGRES_HOST=pennsievedb-ci
+      - MINIO_URL=http://minio-ci:9000
+      - MANIFEST_FILES_BUCKET=test-manifest-bucket
     volumes:
       - $PWD:/go/src/github.com/pennsieve/datasets-service
     networks:
@@ -32,5 +55,14 @@ services:
   pennsievedb-ci:
     image: pennsieve/pennsievedb:V20221102133799-seed
     restart: always
+    networks:
+      - api-tests
+
+  minio-ci:
+    image: minio/minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server --console-address ":9001" /data
     networks:
       - api-tests

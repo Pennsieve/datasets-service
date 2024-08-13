@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	log "github.com/sirupsen/logrus"
@@ -14,6 +16,8 @@ import (
 )
 
 var PennsieveDB *sql.DB
+var S3Client *s3.Client
+var HandlerVars *models.HandlerSSMVars
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -87,7 +91,7 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 // has been initialized to use PennsieveDB as the SQL database pointed to the
 // workspace in the RequestHandler's OrgClaim.
 func (h *RequestHandler) WithDefaultService() *RequestHandler {
-	srv := service.NewDatasetsService(PennsieveDB, int(h.claims.OrgClaim.IntId))
+	srv := service.NewDatasetsService(PennsieveDB, S3Client, *HandlerVars, int(h.claims.OrgClaim.IntId))
 	h.datasetsService = srv
 	return h
 }
