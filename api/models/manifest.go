@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
 )
 
 type HandlerSSMVars struct {
@@ -15,9 +16,11 @@ type WriteManifestOutput struct {
 }
 
 // S3ManifestFile how the file on S3 will be structured.
-//type S3ManifestFile struct {
-//	Manifest DatasetManifestDTO
-//}
+type S3ManifestFile struct {
+	DatasetNodeId string
+	Date          time.Time
+	Manifest      []ManifestDTO
+}
 
 type ManifestDTO struct {
 	PackageId     int        `json:"package_id"`
