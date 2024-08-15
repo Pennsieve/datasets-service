@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"time"
 )
 
@@ -15,19 +17,24 @@ type WriteManifestOutput struct {
 	S3Key    string
 }
 
-// S3ManifestFile how the file on S3 will be structured.
-type S3ManifestFile struct {
-	DatasetNodeId string
-	Date          time.Time
-	Manifest      []ManifestDTO
+// WorkspaceManifest how the file on S3 will be structured.
+type WorkspaceManifest struct {
+	Date          JSONDate          `json:"manifestCreatedOn"`
+	DatasetId     int64             `json:"datasetId"`
+	DatasetNodeId string            `json:"datasetNodeId"`
+	Name          string            `json:"name"`
+	Description   string            `json:"description"`
+	License       string            `json:"license"`
+	Contributors  pgdb.Contributors `json:"contributors"`
+	Tags          pgdb.Tags         `json:"tags"`
+	Files         []ManifestDTO     `json:"files"`
 }
 
 type ManifestDTO struct {
-	PackageId     int        `json:"package_id"`
-	PackageName   string     `json:"package_name"`
-	FileName      NullString `json:"file_name,omitempty"`
+	PackageNodeId string     `json:"sourcePackageId"`
+	PackageName   string     `json:"sourcePackageName"`
+	FileName      NullString `json:"name,omitempty"`
 	Path          string     `json:"path"`
-	PackageNodeId string     `json:"package_node_id"`
 	Size          NullInt    `json:"size,omitempty"`
 	CheckSum      NullString `json:"checksum,omitempty"`
 }
@@ -40,6 +47,24 @@ type DatasetManifest struct {
 	PackageNodeId string          `json:"package_node_id"`
 	Size          NullInt         `json:"size,omitempty"`
 	CheckSum      NullString      `json:"checksum,omitempty"`
+}
+
+type JSONDate time.Time
+
+func (t JSONDate) MarshalJSON() ([]byte, error) {
+	stamp := fmt.Sprintf("\"%s\"", time.Time(t).Format(time.ANSIC))
+	return []byte(stamp), nil
+}
+
+func (t *JSONDate) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	tt, _ := time.Parse(time.ANSIC, s)
+
+	*t = JSONDate(tt)
+	return nil
 }
 
 // NullString is a wrapper around sql.NullString

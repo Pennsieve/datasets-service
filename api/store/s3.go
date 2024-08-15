@@ -37,7 +37,7 @@ type s3StoreFactory struct {
 }
 
 type S3Store interface {
-	WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest []models.ManifestDTO) (*models.WriteManifestOutput, error)
+	WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error)
 	GetPresignedUrl(ctx context.Context, bucket, key string) (*url.URL, error)
 }
 
@@ -46,7 +46,7 @@ type s3Store struct {
 	S3Bucket string
 }
 
-func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest []models.ManifestDTO) (*models.WriteManifestOutput, error) {
+func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error) {
 
 	// Method to create relatively short UUID JSON file name
 	randName, _ := randomFilename16Char()
@@ -58,7 +58,7 @@ func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, m
 		u.BufferProvider = manager.NewBufferedReadSeekerWriteToPool(25 * 1024 * 1024)
 	})
 
-	serializedManifests, err := json.Marshal(manifest)
+	serializedManifests, err := json.MarshalIndent(manifest, "", "    ")
 	if err != nil {
 		return nil, err
 	}
