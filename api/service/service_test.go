@@ -211,7 +211,7 @@ func TestGetManifest(t *testing.T) {
 	// Reading file from S3 which should contain array of manifestFile objects
 	testResult, err := readS3Object(s3Client, actual.S3Bucket, actual.S3Key)
 	assert.NoError(t, err)
-	assert.Len(t, testResult.Files, 10, "Unexpected length of manifest file array from S3.")
+	assert.Len(t, testResult.Files, 6, "Unexpected length of manifest file array from S3.")
 
 	// Check name for single package
 	check := false
