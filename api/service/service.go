@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
@@ -16,26 +17,35 @@ import (
 type DatasetsService interface {
 	GetDataset(ctx context.Context, datasetNodeId string) (*pgdb.Dataset, error)
 	GetTrashcanPage(ctx context.Context, datasetNodeId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error)
-	GetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error)
+	GetManifest(ctx context.Context, input models.ManifestWorkerInput) error
+	TriggerAsyncGetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error)
 }
 
 type datasetsService struct {
 	StoreFactory     store.DatasetsStoreFactory
 	S3StoreFactory   store.S3StoreFactory
+	SnsStoreFactory  store.SnsStoreFactory
 	OrgId            int
 	S3ManifestBucket string
+	SnsTopic         string
 }
 
-func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, s3factory store.S3StoreFactory, ssmVars models.HandlerSSMVars, orgId int) DatasetsService {
-	return &datasetsService{StoreFactory: factory, S3StoreFactory: s3factory, S3ManifestBucket: ssmVars.S3Bucket, OrgId: orgId}
+func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, s3factory store.S3StoreFactory, snsFactory store.SnsStoreFactory, options models.HandlerVars, orgId int) DatasetsService {
+	return &datasetsService{
+		StoreFactory:     factory,
+		S3StoreFactory:   s3factory,
+		SnsStoreFactory:  snsFactory,
+		S3ManifestBucket: options.S3Bucket,
+		OrgId:            orgId,
+		SnsTopic:         options.SnsTopic}
 }
 
-func NewDatasetsService(db *sql.DB, s3Client *s3.Client, ssmVars models.HandlerSSMVars, orgId int) DatasetsService {
-	str := store.NewDatasetsStoreFactory(db, s3Client)
+func NewDatasetsService(db *sql.DB, s3Client *s3.Client, snsClient models.SnsAPI, options models.HandlerVars, orgId int) DatasetsService {
+	pgFactory := store.NewPostgresStoreFactory(db)
+	s3Factory := store.NewS3StoreFactory(s3Client)
+	snsFactory := store.NewSnsStoreFactory(snsClient)
 
-	s3factory := store.NewS3StoreFactory(s3Client)
-
-	datasetsSvc := NewDatasetsServiceWithFactory(str, s3factory, ssmVars, orgId)
+	datasetsSvc := NewDatasetsServiceWithFactory(pgFactory, s3Factory, snsFactory, options, orgId)
 	return datasetsSvc
 }
 
@@ -88,11 +98,48 @@ func (s *datasetsService) GetDataset(ctx context.Context, datasetId string) (*pg
 	return q.GetDatasetByNodeId(ctx, datasetId)
 }
 
-func (s *datasetsService) GetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error) {
+// TriggerAsyncGetManifest is used to signal the worker Lambda to generate the manifest.
+func (s *datasetsService) TriggerAsyncGetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error) {
+	q := s.StoreFactory.NewSimpleStore(s.OrgId)
+	ds, _ := q.GetDatasetByNodeId(ctx, datasetNodeId)
+	s3 := s.S3StoreFactory.NewSimpleStore(s.S3ManifestBucket)
+
+	// Define S3Key for Manifest (format: "datasetID/datasetID_lastUpdated.json"
+	manifestFileName := fmt.Sprintf("%s/%s_%s.json",
+		strings.Replace(datasetNodeId, "N:dataset:", "", -1),
+		strings.Replace(datasetNodeId, "N:dataset:", "", -1),
+		strings.Replace(ds.UpdatedAt.Format(time.RFC3339), ":", "_", -1))
+
+	sns := s.SnsStoreFactory.NewSimpleStore(s.SnsTopic)
+
+	sns.TriggerWorkerLambda(ctx, models.ManifestWorkerInput{
+		OrgIntId:      s.OrgId,
+		DatasetNodeId: datasetNodeId,
+		ManifestS3Key: manifestFileName,
+	})
+
+	// Create Presigned URL for file on S3
+	presignedUrl, err := s3.GetPresignedUrl(ctx, s.S3ManifestBucket, manifestFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	result := models.ManifestResult{
+		Url:      presignedUrl.String(),
+		S3Bucket: s.S3ManifestBucket,
+		S3Key:    manifestFileName,
+		Status:   models.CREATING,
+	}
+	return &result, nil
+
+}
+
+// GetManifest is used by the manifest Worker to generate the manifest and store on S3.
+func (s *datasetsService) GetManifest(ctx context.Context, input models.ManifestWorkerInput) error {
 	q := s.StoreFactory.NewSimpleStore(s.OrgId)
 	s3 := s.S3StoreFactory.NewSimpleStore(s.S3ManifestBucket)
 
-	ds, _ := q.GetDatasetByNodeId(ctx, datasetNodeId)
+	ds, _ := q.GetDatasetByNodeId(ctx, input.DatasetNodeId)
 
 	manifest, err := q.GetDatasetManifest(ctx, ds.Id)
 
@@ -142,7 +189,7 @@ func (s *datasetsService) GetManifest(ctx context.Context, datasetNodeId string)
 	workspaceManifest := models.WorkspaceManifest{
 		Date:          models.JSONDate(time.Now()),
 		DatasetId:     ds.Id,
-		DatasetNodeId: datasetNodeId,
+		DatasetNodeId: input.DatasetNodeId,
 		Name:          ds.Name,
 		Description:   description,
 		License:       license,
@@ -152,22 +199,10 @@ func (s *datasetsService) GetManifest(ctx context.Context, datasetNodeId string)
 	}
 
 	// Write JSON file to S3
-	writeOutput, err := s3.WriteManifestToS3(ctx, datasetNodeId, workspaceManifest)
+	_, err = s3.WriteManifestToS3(ctx, input.DatasetNodeId, input.ManifestS3Key, workspaceManifest)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	// Create Presigned URL for file on S3
-	presignedUrl, err := s3.GetPresignedUrl(ctx, writeOutput.S3Bucket, writeOutput.S3Key)
-	if err != nil {
-		return nil, err
-	}
-
-	result := models.ManifestResult{
-		Url:      presignedUrl.String(),
-		S3Bucket: writeOutput.S3Bucket,
-		S3Key:    writeOutput.S3Key,
-	}
-	return &result, nil
+	return nil
 
 }

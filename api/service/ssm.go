@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func FindParameter(c context.Context, api SSMGetParameterAPI, input *ssm.GetPara
 }
 
 // GetAppClientVars returns a SSMVars struct with values from AWS SSM or ENV
-func GetAppClientVars(ctx context.Context) (*models.HandlerSSMVars, error) {
+func GetAppClientVars(ctx context.Context) (*models.HandlerVars, error) {
 
 	s3BucketId := os.Getenv("MANIFEST_FILES_BUCKET")
 
@@ -62,7 +62,7 @@ func GetAppClientVars(ctx context.Context) (*models.HandlerSSMVars, error) {
 		s3BucketId = aws.ToString(results.Parameter.Value)
 	}
 
-	return &models.HandlerSSMVars{
+	return &models.HandlerVars{
 		S3Bucket: s3BucketId,
 	}, nil
 }

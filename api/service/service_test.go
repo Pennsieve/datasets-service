@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	transport "github.com/aws/smithy-go/endpoints"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
@@ -110,7 +111,7 @@ func TestGetTrashcanPageDeleting(t *testing.T) {
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
 
-	service := NewDatasetsService(db.DB, getS3Client(), models.HandlerSSMVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsService(db.DB, getS3Client(), &MockSnSClient{}, models.HandlerVars{S3Bucket: mfBucket}, orgId)
 	for rootId, expectedPage := range rootNodeIdToExpectedPage {
 		t.Run(fmt.Sprintf("GetTrashcanPage starting at folder %s", rootId), func(t *testing.T) {
 			actual, err := service.GetTrashcanPage(context.Background(), datasetNodeId, rootId, limit, offset)
@@ -128,9 +129,10 @@ func TestGetTrashcanPageEmpty(t *testing.T) {
 		CountDatasetPackagesByStatesReturn: MockReturn[int]{Value: 0},
 	}}
 	mockS3Factory := MockS3Factory{}
+	mockSnsFactory := MockSnsFactory{}
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
-	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, models.HandlerSSMVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, models.HandlerVars{S3Bucket: mfBucket}, orgId)
 	page, err := service.GetTrashcanPage(context.Background(), "N:dataset:dddd", "", 100, 0)
 	if assert.NoError(t, err) {
 		assert.NotNil(t, page.Packages)
@@ -171,9 +173,11 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 	} {
 		mockFactory := MockFactory{&expected.mockStore, -1}
 		mockS3Factory := MockS3Factory{}
+		mockSnsFactory := MockSnsFactory{}
 		mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
+		snsTopic := getEnv("CREATE_MANIFEST_SNS_TOPIC", "manifest-files-bucket")
 
-		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, models.HandlerSSMVars{S3Bucket: mfBucket}, orgId)
+		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}, orgId)
 		t.Run(tName, func(t *testing.T) {
 			_, err := service.GetTrashcanPage(context.Background(), "N:dataset:7890", expected.rootNodeId, 10, 0)
 			if assert.Error(t, err) {
@@ -198,18 +202,26 @@ func TestGetManifest(t *testing.T) {
 	}()
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "test-manifest-bucket")
-	handleVars := models.HandlerSSMVars{S3Bucket: mfBucket}
+	snsTopic := getEnv("CREATE_MANIFEST_SNS_TOPIC", "create-manifest-topic")
+
+	handleVars := models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}
 
 	s3Client := getS3Client()
-	service := NewDatasetsService(db.DB, s3Client, handleVars, orgId)
+	snsClient := MockSnSClient{}
+	service := NewDatasetsService(db.DB, s3Client, &snsClient, handleVars, orgId)
 
 	// Generate manifest for dataset and store to S3 (and generate presigned url)
-	actual, err := service.GetManifest(context.Background(), datasetNodeId)
+	input := models.ManifestWorkerInput{
+		OrgIntId:      orgId,
+		DatasetNodeId: datasetNodeId,
+		ManifestS3Key: "test/test-manifest.json",
+	}
+
+	err := service.GetManifest(context.Background(), input)
 	assert.NoError(t, err)
-	assert.Equal(t, mfBucket, actual.S3Bucket)
 
 	// Reading file from S3 which should contain array of manifestFile objects
-	testResult, err := readS3Object(s3Client, actual.S3Bucket, actual.S3Key)
+	testResult, err := readS3Object(s3Client, mfBucket, input.ManifestS3Key)
 	assert.NoError(t, err)
 	assert.Len(t, testResult.Files, 6, "Unexpected length of manifest file array from S3.")
 
@@ -326,14 +338,35 @@ func (m *MockDatasetsStore) GetDatasetPackageByNodeId(_ context.Context, _ int64
 	return m.GetDatasetPackageByNodeIdReturn.ret()
 }
 
+type MockSnSClient struct{}
+
+func (m *MockSnSClient) Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error) {
+	return &sns.PublishOutput{}, nil
+}
+
 type MockS3Store struct {
 }
 
-func (m *MockS3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error) {
+func (m *MockS3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, s3Key string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error) {
 	return nil, nil
 }
 func (m *MockS3Store) GetPresignedUrl(ctx context.Context, bucket string, key string) (*url.URL, error) {
 	return nil, nil
+}
+
+type MockSnsStore struct {
+}
+
+func (m *MockSnsStore) TriggerWorkerLambda(ctx context.Context, input models.ManifestWorkerInput) error {
+	return nil
+}
+
+type MockSnsFactory struct {
+	mockStore *MockSnsStore
+}
+
+func (m *MockSnsFactory) NewSimpleStore(bucket string) store.SnsStore {
+	return m.mockStore
 }
 
 type MockS3Factory struct {

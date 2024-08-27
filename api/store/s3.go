@@ -13,7 +13,6 @@ import (
 	"github.com/pennsieve/datasets-service/api/models"
 	log "github.com/sirupsen/logrus"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -33,11 +32,10 @@ func (d *s3StoreFactory) NewSimpleStore(bucket string) S3Store {
 
 type s3StoreFactory struct {
 	S3Client *s3.Client
-	S3Bucket string
 }
 
 type S3Store interface {
-	WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error)
+	WriteManifestToS3(ctx context.Context, datasetNodeId string, s3Key string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error)
 	GetPresignedUrl(ctx context.Context, bucket, key string) (*url.URL, error)
 }
 
@@ -46,12 +44,12 @@ type s3Store struct {
 	S3Bucket string
 }
 
-func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error) {
+func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, s3Key string, manifest models.WorkspaceManifest) (*models.WriteManifestOutput, error) {
 
-	// Method to create relatively short UUID JSON file name
-	randName, _ := randomFilename16Char()
-	manifestFileName := fmt.Sprintf("%s/%s.json",
-		strings.Replace(datasetNodeId, "N:dataset:", "", -1), randName)
+	//// Method to create relatively short UUID JSON file name
+	//randName, _ := randomFilename16Char()
+	//manifestFileName := fmt.Sprintf("%s/%s.json",
+	//	strings.Replace(datasetNodeId, "N:dataset:", "", -1), randName)
 
 	uploader := manager.NewUploader(d.S3Client, func(u *manager.Uploader) {
 		// Define a strategy that will buffer 25 MiB in memory
@@ -65,7 +63,7 @@ func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, m
 
 	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(d.S3Bucket),
-		Key:    aws.String(manifestFileName),
+		Key:    aws.String(s3Key),
 		Body:   bytes.NewReader(serializedManifests),
 	})
 	if err != nil {
@@ -74,7 +72,7 @@ func (d *s3Store) WriteManifestToS3(ctx context.Context, datasetNodeId string, m
 
 	return &models.WriteManifestOutput{
 		S3Bucket: d.S3Bucket,
-		S3Key:    manifestFileName,
+		S3Key:    s3Key,
 	}, nil
 }
 
