@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/service"
-	"github.com/pennsieve/pennsieve-go-core/pkg/logging"
 	"net/http"
 )
 

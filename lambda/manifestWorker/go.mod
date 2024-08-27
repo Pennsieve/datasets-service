@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.30
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
+	github.com/aws/aws-sdk-go-v2/service/sns v1.20.3
 	github.com/pennsieve/datasets-service/api v0.0.0-00010101000000-000000000000
 	github.com/pennsieve/pennsieve-go-core v1.10.0
 )
@@ -27,7 +28,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.18 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sns v1.20.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.52.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.22.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5 // indirect
@@ -36,10 +36,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	golang.org/x/sys v0.15.0 // indirect
