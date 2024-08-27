@@ -1,4 +1,4 @@
-package manifestWorker
+package main
 
 import (
 	"context"
