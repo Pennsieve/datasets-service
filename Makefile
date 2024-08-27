@@ -67,7 +67,7 @@ package:
 	@echo "***********************"
 	@echo ""
 	cd lambda/service; \
-  		env GOOS=linux GOARCH=amd64 go build -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(SERVICE_EXEC); \
+  		env GOOS=linux GOARCH=arm64 go build -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(SERVICE_EXEC); \
 		cd $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) .
 	@echo ""
@@ -76,7 +76,7 @@ package:
 	@echo "***************************************"
 	@echo ""
 	cd lambda/manifestWorker; \
-		env GOOS=linux GOARCH=amd64 go build -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_EXEC); \
+		env GOOS=linux GOARCH=arm64 go build -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_EXEC); \
 		cd $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME) .
 
