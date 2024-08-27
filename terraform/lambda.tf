@@ -2,7 +2,8 @@ resource "aws_lambda_function" "service_lambda" {
   description   = "Lambda Function which handles requests for serverless datasets-service"
   function_name = "${var.environment_name}-${var.service_name}-lambda-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
   handler       = "datasets_service"
-  runtime       = "go1.x"
+  runtime       = "provided.al2"
+  architectures = ["arm64"]
   role          = aws_iam_role.datasets_service_lambda_role.arn
   timeout       = 300
   memory_size   = 128
@@ -29,12 +30,13 @@ resource "aws_lambda_function" "manifest_worker_lambda" {
   description   = "Lambda Function which generates a manifest file on S3"
   function_name = "${var.environment_name}-${var.service_name}-create-manifest-lambda-${data.terraform_remote_state.region.outputs.aws_region_shortname}"
   handler       = "manifest-worker"
-  runtime       = "go1.x"
+  runtime       = "provided.al2"
+  architectures = ["arm64"]
   role          = aws_iam_role.datasets_service_lambda_role.arn
   timeout       = 300
   memory_size   = 128
   s3_bucket     = var.lambda_bucket
-  s3_key        = "${var.service_name}/${var.service_name}-${var.image_tag}.zip"
+  s3_key        = "${var.service_name}/manifest-worker-${var.image_tag}.zip"
 
   vpc_config {
     subnet_ids         = tolist(data.terraform_remote_state.vpc.outputs.private_subnet_ids)
