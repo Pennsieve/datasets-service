@@ -4,8 +4,6 @@ go 1.22.2
 
 replace github.com/pennsieve/datasets-service/api => ../../api
 
-replace github.com/pennsieve/pennsieve-go-core => ../../../pennsieve-go-core
-
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.30
