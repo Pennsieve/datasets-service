@@ -5,12 +5,10 @@ WORKING_DIR   ?= "$(shell pwd)"
 API_DIR ?= "api"
 SERVICE_NAME  ?= "datasets-service"
 
-SERVICE_EXEC  ?= "datasets_service"
 SERVICE_PACK  ?= "datasetsService"
 PACKAGE_NAME  ?= "${SERVICE_NAME}-${IMAGE_TAG}.zip"
 
 MANIFEST_WORKER_NAME ?= "manifest-worker"
-MANIFEST_WORKER_EXEC  ?= "manifest_worker"
 MANIFEST_WORKER_SERVICE_PACK  ?= "manifestWorker"
 MANIFEST_WORKER_PACKAGE_NAME ?= "${MANIFEST_WORKER_NAME}-${IMAGE_TAG}.zip"
 
@@ -67,7 +65,7 @@ package:
 	@echo "***********************"
 	@echo ""
 	cd lambda/service; \
-  		env GOOS=linux GOARCH=arm64 go build -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(SERVICE_EXEC); \
+  		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/bootstrap; \
 		cd $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) .
 	@echo ""
@@ -76,7 +74,7 @@ package:
 	@echo "***************************************"
 	@echo ""
 	cd lambda/manifestWorker; \
-		env GOOS=linux GOARCH=arm64 go build -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_EXEC); \
+		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/bootstrap; \
 		cd $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME) .
 
@@ -101,5 +99,6 @@ publish:
 # Run go mod tidy on modules
 tidy:
 	cd ${WORKING_DIR}/lambda/service; go mod tidy
+	cd ${WORKING_DIR}/lambda/manifestWorker; go mod tidy
 	cd ${WORKING_DIR}/api; go mod tidy
 
