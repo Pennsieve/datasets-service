@@ -36,7 +36,7 @@ resource "aws_lambda_function" "manifest_worker_lambda" {
   timeout       = 300
   memory_size   = 128
   s3_bucket     = var.lambda_bucket
-  s3_key        = "${var.service_name}/manifest-worker-${var.image_tag}.zip"
+  s3_key        = "manifest-worker/manifest-worker-${var.image_tag}.zip"
 
   vpc_config {
     subnet_ids         = tolist(data.terraform_remote_state.vpc.outputs.private_subnet_ids)
