@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-type HandlerSSMVars struct {
+type HandlerVars struct {
 	S3Bucket string
+	SnsTopic string
 }
 
 type WriteManifestOutput struct {
@@ -113,8 +114,27 @@ func (x *NullInt) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// statusType indicates whether the manifest is available or still being created
+type statusType int64
+
+const (
+	AVAILABLE statusType = iota
+	CREATING
+)
+
 type ManifestResult struct {
-	Url      string `json:"url"`
-	S3Bucket string `json:"s3_bucket"`
-	S3Key    string `json:"s3_key"`
+	Url      string     `json:"url"`
+	S3Bucket string     `json:"s3_bucket"`
+	S3Key    string     `json:"s3_key"`
+	Status   statusType `json:"status"`
+}
+
+func (t statusType) String() string {
+	switch t {
+	case AVAILABLE:
+		return "AVAILABLE"
+	case CREATING:
+		return "CREATING"
+	}
+	return "UNKNOWN"
 }

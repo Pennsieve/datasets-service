@@ -66,8 +66,8 @@ type DatasetsStoreFactory interface {
 	ExecStoreTx(ctx context.Context, orgId int, fn func(store DatasetsStore) error) error
 }
 
-func NewDatasetsStoreFactory(pennsieveDB *sql.DB, s3Client *s3.Client) DatasetsStoreFactory {
-	return &datasetsStoreFactory{DB: pennsieveDB, S3Client: s3Client}
+func NewPostgresStoreFactory(pennsieveDB *sql.DB) DatasetsStoreFactory {
+	return &datasetsStoreFactory{DB: pennsieveDB}
 }
 
 type datasetsStoreFactory struct {

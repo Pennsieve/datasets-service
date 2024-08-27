@@ -34,7 +34,9 @@ func (h *ManifestHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResp
 		return h.logAndBuildError("query param 'dataset_id' is required", http.StatusBadRequest), nil
 	}
 
-	page, err := h.datasetsService.GetManifest(ctx, datasetNodeID)
+	// Triggering the worker lambda to create the manifest
+	// TODO: heuristically run this directly in the current lambda based on dataset size
+	page, err := h.datasetsService.TriggerAsyncGetManifest(ctx, datasetNodeID)
 
 	if err == nil {
 		h.logger.Info("OK")
