@@ -75,7 +75,7 @@ package:
 	@echo "*   Building manifest worker lambda   *"
 	@echo "***************************************"
 	@echo ""
-	cd lambda/service; \
+	cd lambda/manifestWorker; \
 		env GOOS=linux GOARCH=amd64 go build -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_EXEC); \
 		cd $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME) .
