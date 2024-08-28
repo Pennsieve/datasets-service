@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/pennsieve/datasets-service/api/logging"
@@ -18,6 +19,8 @@ var HandlerVars *models.HandlerVars
 var Logger = logging.Default
 
 func LambdaHandler(ctx context.Context, params models.ManifestWorkerInput) (int, error) {
+
+	Logger.Info(fmt.Sprintf("params: %d, %s, %s",params.OrgIntId,params.DatasetNodeId, params.ManifestS3Key)
 
 	srv := service.NewDatasetsService(PennsieveDB, S3Client, SnsClient, HandlerVars, int(params.OrgIntId))
 	err := srv.GetManifest(ctx, params)
