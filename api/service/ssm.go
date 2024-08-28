@@ -62,7 +62,10 @@ func GetAppClientVars(ctx context.Context) (*models.HandlerVars, error) {
 		s3BucketId = aws.ToString(results.Parameter.Value)
 	}
 
+	snsTopic := os.Getenv("CREATE_MANIFEST_SNS_TOPIC")
+
 	return &models.HandlerVars{
 		S3Bucket: s3BucketId,
+		SnsTopic: snsTopic,
 	}, nil
 }

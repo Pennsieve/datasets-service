@@ -12,7 +12,6 @@ import (
 	"github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
 	"github.com/sirupsen/logrus"
 	"log"
-	"os"
 )
 
 func init() {
@@ -35,10 +34,7 @@ func init() {
 	}
 
 	handler.S3Client = s3.NewFromConfig(cfg)
-
 	handler.SNSClient = sns.NewFromConfig(cfg)
-
-	handler.SNSTopic = os.Getenv("CREATE_MANIFEST_SNS_TOPIC")
 
 }
 
