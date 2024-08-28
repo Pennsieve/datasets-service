@@ -19,7 +19,7 @@ var Logger = logging.Default
 
 func LambdaHandler(ctx context.Context, params models.ManifestWorkerInput) (int, error) {
 
-	srv := service.NewDatasetsService(PennsieveDB, S3Client, SnsClient, *HandlerVars, int(params.OrgIntId))
+	srv := service.NewDatasetsService(PennsieveDB, S3Client, SnsClient, HandlerVars, int(params.OrgIntId))
 	err := srv.GetManifest(ctx, params)
 
 	if err != nil {
