@@ -10,6 +10,7 @@ import (
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"time"
 )
@@ -111,6 +112,8 @@ func (s *datasetsService) TriggerAsyncGetManifest(ctx context.Context, datasetNo
 		strings.Replace(ds.UpdatedAt.Format(time.RFC3339), ":", "_", -1))
 
 	sns := s.SnsStoreFactory.NewSimpleStore(s.SnsTopic)
+
+	log.Debug(fmt.Sprintf("SNS Store arn: %s", s.SnsTopic))
 
 	sns.TriggerWorkerLambda(ctx, models.ManifestWorkerInput{
 		OrgIntId:      s.OrgId,

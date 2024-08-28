@@ -21,7 +21,7 @@ var (
 	S3Client    *s3.Client
 	SNSClient   *sns.Client
 	SNSTopic    string
-	HandlerVars *models.HandlerVars
+	HandlerVars models.HandlerVars
 )
 
 func init() {
@@ -96,7 +96,7 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 // has been initialized to use PennsieveDB as the SQL database pointed to the
 // workspace in the RequestHandler's OrgClaim.
 func (h *RequestHandler) WithDefaultService() *RequestHandler {
-	srv := service.NewDatasetsService(PennsieveDB, S3Client, SNSClient, *HandlerVars, int(h.claims.OrgClaim.IntId))
+	srv := service.NewDatasetsService(PennsieveDB, S3Client, SNSClient, HandlerVars, int(h.claims.OrgClaim.IntId))
 	h.datasetsService = srv
 	return h
 }
