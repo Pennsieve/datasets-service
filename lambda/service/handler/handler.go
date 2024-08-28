@@ -20,7 +20,6 @@ var (
 	PennsieveDB *sql.DB
 	S3Client    *s3.Client
 	SNSClient   *sns.Client
-	SNSTopic    string
 	HandlerVars *models.HandlerVars
 )
 
