@@ -31,7 +31,7 @@ type datasetsService struct {
 	SnsTopic         string
 }
 
-func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, s3factory store.S3StoreFactory, snsFactory store.SnsStoreFactory, options models.HandlerVars, orgId int) DatasetsService {
+func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, s3factory store.S3StoreFactory, snsFactory store.SnsStoreFactory, options *models.HandlerVars, orgId int) DatasetsService {
 	return &datasetsService{
 		StoreFactory:     factory,
 		S3StoreFactory:   s3factory,
@@ -41,7 +41,7 @@ func NewDatasetsServiceWithFactory(factory store.DatasetsStoreFactory, s3factory
 		SnsTopic:         options.SnsTopic}
 }
 
-func NewDatasetsService(db *sql.DB, s3Client *s3.Client, snsClient models.SnsAPI, options models.HandlerVars, orgId int) DatasetsService {
+func NewDatasetsService(db *sql.DB, s3Client *s3.Client, snsClient models.SnsAPI, options *models.HandlerVars, orgId int) DatasetsService {
 	pgFactory := store.NewPostgresStoreFactory(db)
 	s3Factory := store.NewS3StoreFactory(s3Client)
 	snsFactory := store.NewSnsStoreFactory(snsClient)
