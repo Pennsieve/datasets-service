@@ -21,7 +21,7 @@ var (
 	S3Client    *s3.Client
 	SNSClient   *sns.Client
 	SNSTopic    string
-	HandlerVars models.HandlerVars
+	HandlerVars *models.HandlerVars
 )
 
 func init() {

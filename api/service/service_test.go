@@ -111,7 +111,7 @@ func TestGetTrashcanPageDeleting(t *testing.T) {
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
 
-	service := NewDatasetsService(db.DB, getS3Client(), &MockSnSClient{}, models.HandlerVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsService(db.DB, getS3Client(), &MockSnSClient{}, &models.HandlerVars{S3Bucket: mfBucket}, orgId)
 	for rootId, expectedPage := range rootNodeIdToExpectedPage {
 		t.Run(fmt.Sprintf("GetTrashcanPage starting at folder %s", rootId), func(t *testing.T) {
 			actual, err := service.GetTrashcanPage(context.Background(), datasetNodeId, rootId, limit, offset)
@@ -132,7 +132,7 @@ func TestGetTrashcanPageEmpty(t *testing.T) {
 	mockSnsFactory := MockSnsFactory{}
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
-	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, models.HandlerVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket}, orgId)
 	page, err := service.GetTrashcanPage(context.Background(), "N:dataset:dddd", "", 100, 0)
 	if assert.NoError(t, err) {
 		assert.NotNil(t, page.Packages)
@@ -177,7 +177,7 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 		mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
 		snsTopic := getEnv("CREATE_MANIFEST_SNS_TOPIC", "manifest-files-bucket")
 
-		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}, orgId)
+		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}, orgId)
 		t.Run(tName, func(t *testing.T) {
 			_, err := service.GetTrashcanPage(context.Background(), "N:dataset:7890", expected.rootNodeId, 10, 0)
 			if assert.Error(t, err) {
@@ -208,7 +208,7 @@ func TestGetManifest(t *testing.T) {
 
 	s3Client := getS3Client()
 	snsClient := MockSnSClient{}
-	service := NewDatasetsService(db.DB, s3Client, &snsClient, handleVars, orgId)
+	service := NewDatasetsService(db.DB, s3Client, &snsClient, &handleVars, orgId)
 
 	// Generate manifest for dataset and store to S3 (and generate presigned url)
 	input := models.ManifestWorkerInput{
