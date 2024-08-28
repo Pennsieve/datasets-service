@@ -113,7 +113,7 @@ func (s *datasetsService) TriggerAsyncGetManifest(ctx context.Context, datasetNo
 
 	sns := s.SnsStoreFactory.NewSimpleStore(s.SnsTopic)
 
-	log.Debug(fmt.Sprintf("SNS Store arn: %s", s.SnsTopic))
+	log.Info(fmt.Sprintf("SNS Store arn: %s", s.SnsTopic))
 
 	sns.TriggerWorkerLambda(ctx, models.ManifestWorkerInput{
 		OrgIntId:      s.OrgId,
