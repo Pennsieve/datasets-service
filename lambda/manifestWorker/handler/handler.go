@@ -3,7 +3,9 @@ package handler
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/pennsieve/datasets-service/api/logging"
@@ -18,7 +20,11 @@ var SnsClient *sns.Client
 var HandlerVars *models.HandlerVars
 var Logger = logging.Default
 
-func LambdaHandler(ctx context.Context, params models.ManifestWorkerInput) (int, error) {
+func LambdaHandler(ctx context.Context, snsEvent events.SNSEvent) (int, error) {
+
+	message := snsEvent.Records[0].SNS.Message
+	var params models.ManifestWorkerInput
+	json.Unmarshal([]byte(message), &params)
 
 	Logger.Info(fmt.Sprintf("params: %d, %s, %s",params.OrgIntId,params.DatasetNodeId, params.ManifestS3Key)
 
