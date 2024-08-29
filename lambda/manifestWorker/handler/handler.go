@@ -24,12 +24,16 @@ func LambdaHandler(ctx context.Context, snsEvent events.SNSEvent) (int, error) {
 
 	message := snsEvent.Records[0].SNS.Message
 	var params models.ManifestWorkerInput
-	json.Unmarshal([]byte(message), &params)
+	err := json.Unmarshal([]byte(message), &params)
+	if err != nil {
+		Logger.Error("Unable to unmarshal the manifest worker input")
+		return 0, err
+	}
 
-	Logger.Info(fmt.Sprintf("params: %d, %s, %s",params.OrgIntId,params.DatasetNodeId, params.ManifestS3Key)
+	Logger.Info(fmt.Sprintf("params: %d, %s, %s", params.OrgIntId, params.DatasetNodeId, params.ManifestS3Key))
 
 	srv := service.NewDatasetsService(PennsieveDB, S3Client, SnsClient, HandlerVars, int(params.OrgIntId))
-	err := srv.GetManifest(ctx, params)
+	err = srv.GetManifest(ctx, params)
 
 	if err != nil {
 		return http.StatusInternalServerError, err
