@@ -6,7 +6,7 @@ resource "aws_lambda_function" "service_lambda" {
   architectures = ["arm64"]
   role          = aws_iam_role.datasets_service_lambda_role.arn
   timeout       = 300
-  memory_size   = 128
+  memory_size   = 512
   s3_bucket     = var.lambda_bucket
   s3_key        = "${var.service_name}/${var.service_name}-${var.image_tag}.zip"
 
