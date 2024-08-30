@@ -38,22 +38,38 @@ var (
   					              AND EXISTS(SELECT 1 FROM trash t2 WHERE (t2.state = 'DELETED' OR t2.state = 'DELETING') and t.id = ANY(t2.id_path))
 					              ORDER BY t.name, t.id
 					              LIMIT $2 OFFSET $3;`
-	getManifestQueryFormat = `WITH RECURSIVE parents (dataset_id, state, id, name, file_name, parent_id, node_id, checksum, size, path) AS 
-								(
-									SELECT p.dataset_id, p.state, p.id, p.name, f.name, p.parent_id, p.node_id, f.checksum, f.size, array[parent_id]
-   								    FROM "%[1]d".packages p
-									FULL JOIN "%[1]d".files f ON p.id = f.package_id
-    								WHERE p.dataset_id = %[2]d AND p.parent_id IS NULL AND p.state NOT IN ('DELETING', 'DELETED')
-								UNION
-									SELECT children.dataset_id, children.state, children.id, children.name, files.name, children.parent_id, children.node_id, files.checksum, files.size, path || children.parent_id
-									FROM "%[1]d".packages children
-									FULL JOIN "%[1]d".files ON children.id = files.package_id
-									INNER JOIN parents ON
-										parents.id = children.parent_id
-									WHERE children.state NOT IN ('DELETING', 'DELETED')
-								)
-								SELECT id AS package_id, name AS package_name, file_name, path, node_id, size, checksum
-								FROM parents`
+	getManifestQueryFormat = `WITH RECURSIVE parents (dataset_id, state, id, name, parent_id, node_id, path) AS
+		                      (
+		                         SELECT p.dataset_id, p.state, p.id, p.name,  p.parent_id, p.node_id,  array[parent_id]
+		                             FROM "%[1]d".packages p
+		                         WHERE p.dataset_id = %[2]d AND p.parent_id IS NULL AND p.state NOT IN ('DELETING', 'DELETED')
+		                      UNION
+		                         SELECT children.dataset_id, children.state, children.id, children.name,  children.parent_id, children.node_id, path || children.parent_id
+		                         FROM "%[1]d".packages children
+		                         INNER JOIN parents ON
+		                            parents.id = children.parent_id
+		                         WHERE children.state NOT IN ('DELETING', 'DELETED')
+		                      )
+		                      SELECT parents.id AS package_id, parents.name AS package_name, f.name, path, node_id, f.size, f.checksum
+		                      FROM parents
+		                      LEFT JOIN "%[1]d".files f ON parents.id = f.package_id`
+
+	//getManifestQueryFormatOld = `WITH RECURSIVE parents (dataset_id, state, id, name, file_name, parent_id, node_id, checksum, size, path) AS
+	//							(
+	//								SELECT p.dataset_id, p.state, p.id, p.name, f.name, p.parent_id, p.node_id, f.checksum, f.size, array[parent_id]
+	//							    FROM "%[1]d".packages p
+	//								FULL JOIN "%[1]d".files f ON p.id = f.package_id
+	//								WHERE p.dataset_id = %[2]d AND p.parent_id IS NULL AND p.state NOT IN ('DELETING', 'DELETED')
+	//							UNION
+	//								SELECT children.dataset_id, children.state, children.id, children.name, files.name, children.parent_id, children.node_id, files.checksum, files.size, path || children.parent_id
+	//								FROM "%[1]d".packages children
+	//								FULL JOIN "%[1]d".files ON children.id = files.package_id
+	//								INNER JOIN parents ON
+	//									parents.id = children.parent_id
+	//								WHERE children.state NOT IN ('DELETING', 'DELETED')
+	//							)
+	//							SELECT id AS package_id, name AS package_name, file_name, path, node_id, size, checksum
+	//							FROM parents`
 )
 
 type PackagePage struct {
