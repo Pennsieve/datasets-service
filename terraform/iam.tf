@@ -80,19 +80,6 @@ data "aws_iam_policy_document" "datasets_service_iam_policy_document" {
   }
 
   statement {
-    sid    = "AllowPublishToMyTopic"
-    effect = "Allow"
-
-    actions = [
-      "sns:Publish"
-    ]
-
-    resources = [
-      aws_sns_topic.create_manifest_sns_topic.arn
-    ]
-  }
-
-  statement {
     effect = "Allow"
 
     actions = [

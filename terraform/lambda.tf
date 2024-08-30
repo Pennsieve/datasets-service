@@ -21,7 +21,6 @@ resource "aws_lambda_function" "service_lambda" {
       PENNSIEVE_DOMAIN   = data.terraform_remote_state.account.outputs.domain_name,
       REGION             = var.aws_region
       RDS_PROXY_ENDPOINT = data.terraform_remote_state.pennsieve_postgres.outputs.rds_proxy_endpoint,
-      CREATE_MANIFEST_SNS_TOPIC = aws_sns_topic.create_manifest_sns_topic.arn,
       LOG_LEVEL = "INFO"
     }
   }
