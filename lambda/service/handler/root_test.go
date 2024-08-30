@@ -163,11 +163,6 @@ type MockDatasetsService struct {
 	mock.Mock
 }
 
-func (m *MockDatasetsService) TriggerAsyncGetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 // Need to statisfy service.DatasetsService
 
 func (m *MockDatasetsService) GetDataset(ctx context.Context, datasetId string) (*pgdb.Dataset, error) {
@@ -180,8 +175,8 @@ func (m *MockDatasetsService) GetTrashcanPage(ctx context.Context, datasetID str
 	return args.Get(0).(*models.TrashcanPage), args.Error(1)
 }
 
-func (m *MockDatasetsService) GetManifest(ctx context.Context, input models.ManifestWorkerInput) error {
-	return nil
+func (m *MockDatasetsService) GetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error) {
+	return nil, nil
 }
 
 // Type safe convenience methods for setting up expectations

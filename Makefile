@@ -8,10 +8,6 @@ SERVICE_NAME  ?= "datasets-service"
 SERVICE_PACK  ?= "datasetsService"
 PACKAGE_NAME  ?= "${SERVICE_NAME}-${IMAGE_TAG}.zip"
 
-MANIFEST_WORKER_NAME ?= "manifest-worker"
-MANIFEST_WORKER_SERVICE_PACK  ?= "manifestWorker"
-MANIFEST_WORKER_PACKAGE_NAME ?= "${MANIFEST_WORKER_NAME}-${IMAGE_TAG}.zip"
-
 .DEFAULT: help
 
 help:
@@ -68,15 +64,6 @@ package:
   		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/bootstrap; \
 		cd $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) .
-	@echo ""
-	@echo "***************************************"
-	@echo "*   Building manifest worker lambda   *"
-	@echo "***************************************"
-	@echo ""
-	cd lambda/manifestWorker; \
-		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/bootstrap; \
-		cd $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/ ; \
-			zip -r $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME) .
 
 # Copy Service lambda to S3 location
 publish:
@@ -88,17 +75,9 @@ publish:
 	@echo ""
 	aws s3 cp $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) s3://$(LAMBDA_BUCKET)/$(SERVICE_NAME)/
 	rm -rf $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME)
-	@echo ""
-	@echo "********************************"
-	@echo "*   Publishing worker lambda   *"
-	@echo "********************************"
-	@echo ""
-	aws s3 cp $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME) s3://$(LAMBDA_BUCKET)/$(MANIFEST_WORKER_NAME)/
-	rm -rf $(WORKING_DIR)/lambda/bin/$(MANIFEST_WORKER_SERVICE_PACK)/$(MANIFEST_WORKER_PACKAGE_NAME)
 
 # Run go mod tidy on modules
 tidy:
 	cd ${WORKING_DIR}/lambda/service; go mod tidy
-	cd ${WORKING_DIR}/lambda/manifestWorker; go mod tidy
 	cd ${WORKING_DIR}/api; go mod tidy
 

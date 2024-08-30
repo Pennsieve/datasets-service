@@ -210,18 +210,11 @@ func TestGetManifest(t *testing.T) {
 	snsClient := MockSnSClient{}
 	service := NewDatasetsService(db.DB, s3Client, &snsClient, &handleVars, orgId)
 
-	// Generate manifest for dataset and store to S3 (and generate presigned url)
-	input := models.ManifestWorkerInput{
-		OrgIntId:      orgId,
-		DatasetNodeId: datasetNodeId,
-		ManifestS3Key: "test/test-manifest.json",
-	}
-
-	err := service.GetManifest(context.Background(), input)
+	result, err := service.GetManifest(context.Background(), datasetNodeId)
 	assert.NoError(t, err)
 
 	// Reading file from S3 which should contain array of manifestFile objects
-	testResult, err := readS3Object(s3Client, mfBucket, input.ManifestS3Key)
+	testResult, err := readS3Object(s3Client, mfBucket, result.S3Key)
 	assert.NoError(t, err)
 	assert.Len(t, testResult.Files, 6, "Unexpected length of manifest file array from S3.")
 
