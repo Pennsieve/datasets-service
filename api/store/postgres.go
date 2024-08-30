@@ -48,8 +48,8 @@ var (
 		                         FROM "%[1]d".packages children
 		                         INNER JOIN parents ON
 		                            parents.id = children.parent_id
-		                         WHERE children.state NOT IN ('DELETING', 'DELETED')
-		                      )
+		                         WHERE children.state NOT IN ('DELETING', 'DELETED') AND parents.node_id LIKE 'N:collection:%%'
+							  )
 		                      SELECT parents.id AS package_id, parents.name AS package_name, f.name, path, node_id, f.size, f.checksum
 		                      FROM parents
 		                      LEFT JOIN "%[1]d".files f ON parents.id = f.package_id`
