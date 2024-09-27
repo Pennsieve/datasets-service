@@ -171,6 +171,7 @@ func (s *datasetsService) GetManifest(ctx context.Context, datasetNodeId string)
 
 			results = append(results, models.ManifestDTO{
 				PackageName:   manifest[i].PackageName,
+				FileNodeId:    manifest[i].FileUUID,
 				FileName:      manifest[i].FileName,
 				Path:          sb.String(),
 				PackageNodeId: manifest[i].PackageNodeId,

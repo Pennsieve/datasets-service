@@ -32,9 +32,10 @@ type WorkspaceManifest struct {
 }
 
 type ManifestDTO struct {
-	PackageNodeId string     `json:"sourcePackageId"`
-	PackageName   string     `json:"sourcePackageName"`
-	FileName      NullString `json:"name,omitempty"`
+	PackageNodeId string     `json:"packageId"`
+	PackageName   string     `json:"packageName"`
+	FileNodeId    NullString `json:"fileId,omitempty"`
+	FileName      NullString `json:"fileName,omitempty"`
 	Path          string     `json:"path"`
 	Size          NullInt    `json:"size,omitempty"`
 	CheckSum      NullString `json:"checksum,omitempty"`
@@ -44,6 +45,7 @@ type DatasetManifest struct {
 	PackageId     int             `json:"package_id"`
 	PackageName   string          `json:"package_name"`
 	FileName      NullString      `json:"file_name,omitempty"`
+	FileUUID      NullString      `json:"file_uuid,omitempty"`
 	Path          []sql.NullInt64 `json:"path"`
 	PackageNodeId string          `json:"package_node_id"`
 	Size          NullInt         `json:"size,omitempty"`
