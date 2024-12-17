@@ -21,8 +21,8 @@ help:
 
 # Start the local versions of docker services
 local-services:
-	docker-compose -f docker-compose.test.yml down --remove-orphans
-	docker-compose -f docker-compose.test.yml up -d pennsievedb
+	docker compose -f docker-compose.test.yml down --remove-orphans
+	docker compose -f docker-compose.test.yml up -d pennsievedb
 
 # Run tests locally
 #test2: local-services
@@ -31,19 +31,19 @@ local-services:
 #	make clean
 
 test:
-	docker-compose -f docker-compose.test.yml down --remove-orphans
-	docker-compose -f docker-compose.test.yml up --exit-code-from local_tests local_tests
+	docker compose -f docker-compose.test.yml down --remove-orphans
+	docker compose -f docker-compose.test.yml up --exit-code-from local_tests local_tests
 
 
 # Run test coverage locally
 test-coverage: local-services
 	./run-test-coverage.sh localtest.env
-	docker-compose -f docker-compose.test.yml down --remove-orphans
+	docker compose -f docker-compose.test.yml down --remove-orphans
 	make clean
 
 # Run dockerized tests (used on Jenkins)
 test-ci:
-	docker-compose -f docker-compose.test.yml down --remove-orphans
+	docker compose -f docker-compose.test.yml down --remove-orphans
 	@IMAGE_TAG=$(IMAGE_TAG) docker-compose -f docker-compose.test.yml up --exit-code-from=ci-tests ci-tests
 
 clean: docker-clean
@@ -51,7 +51,7 @@ clean: docker-clean
 
 # Spin down active docker containers.
 docker-clean:
-	docker-compose -f docker-compose.test.yml down
+	docker compose -f docker-compose.test.yml down
 
 # Build lambda and create ZIP file
 package:

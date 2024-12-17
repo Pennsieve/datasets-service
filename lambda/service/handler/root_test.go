@@ -6,9 +6,9 @@ import (
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/dataset"
-	"github.com/pennsieve/pennsieve-go-core/pkg/models/dataset/role"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
+	"github.com/pennsieve/pennsieve-go-core/pkg/models/role"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -54,7 +54,7 @@ func TestTrashcanRoute(t *testing.T) {
 		mockService := new(MockDatasetsService)
 
 		claims := authorizer.Claims{
-			DatasetClaim: dataset.Claim{
+			DatasetClaim: &dataset.Claim{
 				Role:   role.Viewer,
 				NodeId: expectedDatasetID,
 				IntId:  1234,
@@ -120,7 +120,7 @@ func TestTrashcanRouteHandledErrors(t *testing.T) {
 			"")
 		mockService := new(MockDatasetsService)
 		claims := authorizer.Claims{
-			DatasetClaim: dataset.Claim{
+			DatasetClaim: &dataset.Claim{
 				Role:   role.Viewer,
 				NodeId: datasetID,
 				IntId:  1234,
