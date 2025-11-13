@@ -279,6 +279,83 @@ func (q *Queries) GetDatasetManifest(ctx context.Context, datasetId int64) ([]mo
 
 }
 
+func (q *Queries) GetSharedDatasets(ctx context.Context, userId int64, limit int, offset int) ([]models.SharedDatasetItem, int, error) {
+	// Query to get all datasets shared with the user via dataset_user or dataset_team
+	query := fmt.Sprintf(`
+		WITH user_datasets AS (
+			-- Direct user access
+			SELECT
+				d.id,
+				d.node_id,
+				d.name,
+				du.role,
+				d.updated_at
+			FROM "%[1]d".datasets d
+			INNER JOIN "%[1]d".dataset_user du ON d.id = du.dataset_id
+			WHERE du.user_id = $1
+
+			UNION
+
+			-- Team access
+			SELECT
+				d.id,
+				d.node_id,
+				d.name,
+				dt.role::text as role,
+				d.updated_at
+			FROM "%[1]d".datasets d
+			INNER JOIN "%[1]d".dataset_team dt ON d.id = dt.dataset_id
+			INNER JOIN pennsieve.team_user tu ON dt.team_id = tu.team_id
+			WHERE tu.user_id = $1
+		)
+		SELECT
+			id,
+			node_id,
+			name,
+			role,
+			updated_at,
+			COUNT(*) OVER() as total_count
+		FROM user_datasets
+		ORDER BY updated_at DESC, name
+		LIMIT $2 OFFSET $3
+	`, q.OrgId)
+
+	rows, err := q.db.QueryContext(ctx, query, userId, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var datasets []models.SharedDatasetItem
+	var totalCount int
+
+	for rows.Next() {
+		var ds models.SharedDatasetItem
+		if err := rows.Scan(
+			&ds.Id,
+			&ds.NodeId,
+			&ds.Name,
+			&ds.Role,
+			&ds.UpdatedAt,
+			&totalCount,
+		); err != nil {
+			return nil, 0, err
+		}
+		datasets = append(datasets, ds)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	// If no rows were returned, totalCount will be 0
+	if len(datasets) == 0 {
+		totalCount = 0
+	}
+
+	return datasets, totalCount, nil
+}
+
 func qualifiedColumns(table string, columns []string) string {
 	q := make([]string, len(columns))
 	for i, c := range columns {
@@ -294,4 +371,5 @@ type DatasetsStore interface {
 	CountDatasetPackagesByStates(ctx context.Context, datasetId int64, states []packageState.State) (int, error)
 	GetDatasetPackageByNodeId(ctx context.Context, datasetId int64, packageNodeId string) (*pgdb.Package, error)
 	GetDatasetManifest(ctx context.Context, datasetId int64) ([]models.DatasetManifest, error)
+	GetSharedDatasets(ctx context.Context, userId int64, limit int, offset int) ([]models.SharedDatasetItem, int, error)
 }
