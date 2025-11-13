@@ -18,6 +18,7 @@ type DatasetsService interface {
 	GetDataset(ctx context.Context, datasetNodeId string) (*pgdb.Dataset, error)
 	GetTrashcanPage(ctx context.Context, datasetNodeId string, rootNodeId string, limit int, offset int) (*models.TrashcanPage, error)
 	GetManifest(ctx context.Context, datasetNodeId string) (*models.ManifestResult, error)
+	GetSharedDatasetsForGuest(ctx context.Context, userId int64, limit int, offset int) (*models.SharedDatasetsPage, error)
 }
 
 type datasetsService struct {
@@ -224,4 +225,22 @@ func (s *datasetsService) GetManifest(ctx context.Context, datasetNodeId string)
 
 	return &result, nil
 
+}
+
+func (s *datasetsService) GetSharedDatasetsForGuest(ctx context.Context, userId int64, limit int, offset int) (*models.SharedDatasetsPage, error) {
+	q := s.StoreFactory.NewSimpleStore(s.OrgId)
+
+	datasets, totalCount, err := q.GetSharedDatasets(ctx, userId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &models.SharedDatasetsPage{
+		Limit:      limit,
+		Offset:     offset,
+		TotalCount: totalCount,
+		Datasets:   datasets,
+	}
+
+	return result, nil
 }

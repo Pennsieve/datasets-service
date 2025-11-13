@@ -15,6 +15,9 @@ func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPRe
 	case "/datasets/manifest":
 		manifestHandler := ManifestHandler{*h}
 		return manifestHandler.handle(ctx)
+	case "/datasets/shared-with-me":
+		sharedDatasetsHandler := SharedDatasetsHandler{*h}
+		return sharedDatasetsHandler.handle(ctx)
 	default:
 		return h.logAndBuildError("resource not found: "+h.path, http.StatusNotFound), nil
 	}
