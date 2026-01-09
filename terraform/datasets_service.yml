@@ -1,0 +1,220 @@
+#file: noinspection MaybeTerraformTemplateInspection
+openapi: 3.0.1
+info:
+  version: "3.0"
+  title: Datasets API
+  description: |
+    This is the serverless datasets api
+  termsOfService: https://docs.pennsieve.io/page/pennsieve-terms-of-use
+  contact:
+    name: Pennsieve Support
+    email: support@pennsieve.net
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: https://api2.pennsieve.io/datasets
+    description: Production server
+  - url: https://api2.pennsieve.net/datasets
+    description: Development server
+externalDocs:
+  description: Find more info here
+  url: https://docs.pennsieve.io
+tags:
+  - name: Datasets Service
+    description: Management of datasets
+    externalDocs:
+      url: https://docs.pennsieve.io/reference
+components:
+  x-amazon-apigateway-integrations:
+    datasets-service:
+      type: aws_proxy
+      uri: '${datasets_service_lambda_arn}'
+      httpMethod: POST
+      passthroughBehavior: when_no_match
+      contentHandling: CONVERT_TO_TEXT
+      payloadFormatVersion: "2.0"
+  securitySchemes:
+    token_dataset_auth:
+      type: "apiKey"
+      name: "Unused"
+      in: "header"
+      x-amazon-apigateway-authorizer:
+        identitySource: "$request.header.Authorization,$request.querystring.dataset_id"
+        authorizerUri: ${authorize_lambda_invoke_uri}
+        authorizerPayloadFormatVersion: "2.0"
+        authorizerResultTtlInSeconds: 300
+        type: "request"
+        enableSimpleResponses: true
+        authorizerCredentials: ${gateway_authorizer_role}
+    token_auth:
+      type: "apiKey"
+      name: "Authorization"
+      in: "header"
+      x-amazon-apigateway-authorizer:
+        identitySource: "$request.header.Authorization"
+        authorizerUri: ${authorize_lambda_invoke_uri}
+        authorizerPayloadFormatVersion: "2.0"
+        authorizerResultTtlInSeconds: 300
+        type: "request"
+        enableSimpleResponses: true
+        authorizerCredentials: ${gateway_authorizer_role}
+  responses:
+    Unauthorized:
+      description: Incorrect authentication or user has incorrect permissions.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Error:
+      description: Server Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+paths:
+  /trashcan:
+    get:
+      summary: List trashcan contents for a dataset by folder
+      description: |
+        Returns a list of deleted items from a dataset folder
+      x-amazon-apigateway-integration:
+        $ref: '#/components/x-amazon-apigateway-integrations/datasets-service'
+      operationId: getTrashcan
+      security:
+        - token_dataset_auth: [ ]
+      tags:
+        - Datasets Service|Trashcan
+      parameters:
+        - in: query
+          name: dataset_id
+          schema:
+            type: string
+          required: true
+          description: dataset node id
+        - in: query
+          name: root_node_id
+          schema:
+            type: string
+          required: false
+          description: folder node id limits returned trashcan items to that folder
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 10
+          required: false
+          description: the maximum number of trashcan items to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          required: false
+          description: offset used for pagination of results
+      responses:
+        '200':
+          description: The contents of the dataset's trashcan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  totalCount:
+                    type: integer
+                  packages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        node_id:
+                          type: string
+                        type:
+                          type: string
+                        state:
+                          type: string
+                  messages:
+                    type: array
+                    items:
+                      type: string
+        '4XX':
+          $ref: '#/components/responses/Unauthorized'
+        '5XX':
+          $ref: '#/components/responses/Error'
+  /manifest:
+    get:
+      summary: Presigned url to manifest of dataset
+      description: |
+        Returns a presigned URL to a file containing the current manifest of an unpublished dataset.
+      x-amazon-apigateway-integration:
+        $ref: '#/components/x-amazon-apigateway-integrations/datasets-service'
+      operationId: getManifest
+      security:
+        - token_dataset_auth: [ ]
+      tags:
+        - Datasets Service
+      parameters:
+        - in: query
+          name: dataset_id
+          schema:
+            type: string
+          required: true
+          description: dataset node id
+      responses:
+        '200':
+          description: The contents of the dataset's trashcan.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        '4XX':
+          $ref: '#/components/responses/Unauthorized'
+        '5XX':
+          $ref: '#/components/responses/Error'
