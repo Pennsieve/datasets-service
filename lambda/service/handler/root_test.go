@@ -47,7 +47,7 @@ func TestTrashcanRoute(t *testing.T) {
 		"with offset param":          {"dataset_id": expectedDatasetID, "offset": "10"},
 	} {
 		req := newTestRequest("GET",
-			"/datasets/trashcan",
+			"/trashcan",
 			"getTrashcanRequestID",
 			expectedQueryParams,
 			"")
@@ -114,7 +114,7 @@ func TestTrashcanRouteHandledErrors(t *testing.T) {
 		},
 	} {
 		req := newTestRequest("GET",
-			"/datasets/trashcan",
+			"/trashcan",
 			"getTrashcanRequestID",
 			tData.QueryParams,
 			"")

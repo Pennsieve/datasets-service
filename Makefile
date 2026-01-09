@@ -60,6 +60,7 @@ package:
 	@echo "*   Building lambda   *"
 	@echo "***********************"
 	@echo ""
+	@mkdir -p $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)
 	cd lambda/service; \
   		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/bootstrap; \
 		cd $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/ ; \

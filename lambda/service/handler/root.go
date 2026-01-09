@@ -9,10 +9,10 @@ import (
 func (h *RequestHandler) handle(ctx context.Context) (*events.APIGatewayV2HTTPResponse, error) {
 
 	switch h.path {
-	case "/datasets/trashcan":
+	case "/trashcan":
 		trashcanHandler := TrashcanHandler{*h}
 		return trashcanHandler.handle(ctx)
-	case "/datasets/manifest":
+	case "/manifest":
 		manifestHandler := ManifestHandler{*h}
 		return manifestHandler.handle(ctx)
 	default:

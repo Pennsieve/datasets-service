@@ -17,7 +17,7 @@ variable "lambda_bucket" {
 }
 
 locals {
-  domain_name = data.terraform_remote_state.account.outputs.domain_name
+  # domain_name = data.terraform_remote_state.account.outputs.domain_name
   hosted_zone = data.terraform_remote_state.account.outputs.public_hosted_zone_id
 
   common_tags = {
