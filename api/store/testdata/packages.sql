@@ -1,3 +1,8 @@
+-- Insert test dataset that packages reference
+INSERT INTO "2".datasets (id, name, state, status_id, created_at, updated_at, node_id) 
+VALUES (1, 'Test Dataset', 'READY', 1, '2023-01-01 00:00:00', '2023-01-01 00:00:00', 'N:dataset:7890')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO "2".packages (name, type, state, dataset_id, parent_id, updated_at, created_at, attributes, node_id, size, owner_id, import_id) VALUES ('temp', 'Collection', 'READY', 1, null, '2023-02-03 03:08:44.857041', '2023-02-03 03:08:44.857041', '[]', 'N:collection:f4ee0613-468a-496d-bff6-9df82939a902', null, 1, null);
 
 WITH folder as (

@@ -1,3 +1,8 @@
+-- Insert test dataset that packages reference
+INSERT INTO "2".datasets (id, name, state, status_id, created_at, updated_at, node_id) 
+VALUES (1, 'Test Dataset', 'READY', 1, '2023-01-01 00:00:00', '2023-01-01 00:00:00', 'N:dataset:149b65da-6803-4a67-bf20-83076774a5c7')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO "2".packages (id, name, type, state, dataset_id, parent_id, updated_at, created_at, attributes, node_id, size, owner_id, import_id) VALUES
 -- Level Zero
 (1, 'root-file.txt-1', 'Text', 'UPLOADED', 1, null, '2023-02-02 04:31:05.839616', '2023-01-20 19:23:03.309580', '[{"key": "subtype", "fixed": false, "value": "Text", "hidden": true, "category": "Pennsieve", "dataType": "string"}, {"key": "icon", "fixed": false, "value": "Text", "hidden": true, "category": "Pennsieve", "dataType": "string"}]', 'N:package:ae253796-256a-4b9e-ba80-1c4c5a2afe6b', null, 1, '4d369199-d98a-4b44-b9b4-6c096c78e358'),

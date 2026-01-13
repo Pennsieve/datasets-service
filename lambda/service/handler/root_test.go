@@ -179,6 +179,11 @@ func (m *MockDatasetsService) GetManifest(ctx context.Context, datasetNodeId str
 	return nil, nil
 }
 
+func (m *MockDatasetsService) GetSharedDatasetsPage(ctx context.Context, limit int, offset int) (*models.SharedDatasetsPage, error) {
+	args := m.Called(ctx, limit, offset)
+	return args.Get(0).(*models.SharedDatasetsPage), args.Error(1)
+}
+
 // Type safe convenience methods for setting up expectations
 
 func (m *MockDatasetsService) OnGetTrashcanPageReturn(datasetID string, rootNodeId string, limit int, offset int, returnedPage *models.TrashcanPage) {
