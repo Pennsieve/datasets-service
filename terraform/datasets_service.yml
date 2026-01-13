@@ -117,7 +117,7 @@ paths:
       security:
         - token_dataset_auth: [ ]
       tags:
-        - Datasets Service|Trashcan
+        - Datasets Service
       parameters:
         - in: query
           name: dataset_id
