@@ -40,7 +40,16 @@ func init() {
 
 func DatasetsServiceHandler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 	claims := authorizer.ParseClaims(request.RequestContext.Authorizer.Lambda)
-	handler := NewHandler(&request, claims).WithDefaultService()
+	handler := NewHandler(&request, claims)
+	
+	// Route to appropriate service based on path
+	path := request.RequestContext.HTTP.Path
+	if path == "/shared-datasets" {
+		handler = handler.WithCrossWorkspaceService()
+	} else {
+		handler = handler.WithDefaultService()
+	}
+	
 	return handler.handle(ctx)
 }
 
@@ -56,9 +65,10 @@ type RequestHandler struct {
 	queryParams map[string]string
 	body        string
 
-	logger          *log.Entry
-	datasetsService service.DatasetsService
-	claims          *authorizer.Claims
+	logger                        *log.Entry
+	datasetsService               service.DatasetsService
+	crossWorkspaceDatasetsService service.CrossWorkspaceDatasetsService
+	claims                        *authorizer.Claims
 }
 
 // NewHandler creates a RequestHandler that has its logger field initialized with useful fields.
@@ -97,6 +107,14 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 func (h *RequestHandler) WithDefaultService() *RequestHandler {
 	srv := service.NewDatasetsService(PennsieveDB, S3Client, SNSClient, HandlerVars, int(h.claims.OrgClaim.IntId))
 	h.datasetsService = srv
+	return h
+}
+
+// WithCrossWorkspaceService adds a new service.CrossWorkspaceDatasetsService to the RequestHandler
+// for operations that span multiple workspaces
+func (h *RequestHandler) WithCrossWorkspaceService() *RequestHandler {
+	srv := service.NewCrossWorkspaceDatasetsService(PennsieveDB)
+	h.crossWorkspaceDatasetsService = srv
 	return h
 }
 

@@ -195,10 +195,16 @@ func TestGetManifest(t *testing.T) {
 	db := store.OpenDB(t)
 	defer db.Close()
 
+	// Clean up any existing data first
+	db.Truncate(orgId, "datasets")
+	db.Truncate(orgId, "packages")
+	db.Truncate(orgId, "files")
+	
 	db.ExecSQLFile("manifest-test.sql")
 	defer func() {
 		db.Truncate(orgId, "packages")
 		db.Truncate(orgId, "files")
+		db.Truncate(orgId, "datasets")
 	}()
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "test-manifest-bucket")

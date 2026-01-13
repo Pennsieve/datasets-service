@@ -117,7 +117,7 @@ paths:
       security:
         - token_dataset_auth: [ ]
       tags:
-        - Datasets Service|Trashcan
+        - Datasets Service
       parameters:
         - in: query
           name: dataset_id
@@ -181,6 +181,84 @@ paths:
                     type: array
                     items:
                       type: string
+        '4XX':
+          $ref: '#/components/responses/Unauthorized'
+        '5XX':
+          $ref: '#/components/responses/Error'
+  /shared-datasets:
+    get:
+      summary: List shared datasets across workspaces
+      description: |
+        Returns a paginated list of all datasets shared with the user from workspaces where the user is not a contributor within the workspace.
+      x-amazon-apigateway-integration:
+        $ref: '#/components/x-amazon-apigateway-integrations/datasets-service'
+      operationId: getSharedDatasets
+      security:
+        - token_auth: [ ]
+      tags:
+        - Datasets Service
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 10
+          required: false
+          description: the maximum number of trashcan items to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          required: false
+          description: offset used for pagination of results
+      responses:
+        '200':
+          description: A paginated list of datasets.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  totalCount:
+                    type: integer
+                  datasets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        content:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            description:
+                              type: string
+                            state:
+                              type: string
+                            createdAt:
+                              type: string
+                            updatedAt:
+                              type: string
+                            status:
+                              type: string
+                            tags:
+                              type: array
+                              items:
+                                type: string
+                            dataUseAgreementId:
+                              type: integer
+                            intId:
+                              type: integer
         '4XX':
           $ref: '#/components/responses/Unauthorized'
         '5XX':
