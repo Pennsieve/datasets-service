@@ -129,7 +129,7 @@ func NewQueries(db pg.DBTX, orgId int) *Queries {
 }
 
 func (q *Queries) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgdb.Dataset, error) {
-	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, publication_status_id, size, etag, data_use_agreement_id, changelog_id"
+	const datasetColumns = "id, name, state, description, updated_at, created_at, node_id, permission_bit, type, role, status, automatically_process_packages, license, tags, contributors, banner_id, readme_id, status_id, size, etag, data_use_agreement_id, changelog_id"
 	var ds pgdb.Dataset
 	query := fmt.Sprintf(`SELECT %s FROM "%d".datasets WHERE node_id = $1`, datasetColumns, q.OrgId)
 	if err := q.db.QueryRowContext(ctx, query, dsNodeId).Scan(
@@ -151,7 +151,6 @@ func (q *Queries) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgd
 		&ds.BannerId,
 		&ds.ReadmeId,
 		&ds.StatusId,
-		&ds.PublicationStatusId,
 		&ds.Size,
 		&ds.ETag,
 		&ds.DataUseAgreementId,
