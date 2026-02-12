@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
 	github.com/aws/aws-sdk-go-v2/service/sns v1.31.5
 	github.com/pennsieve/datasets-service/api v0.0.0-20230217205046-0ae8eb70cca8
-	github.com/pennsieve/pennsieve-go-core v1.13.0
+	github.com/pennsieve/pennsieve-go-core v1.13.7
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
 
