@@ -80,7 +80,7 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 		// Note: Users with permission_bit = 1 are guests and cannot be part of teams,
 		// so we only check dataset_user table for direct access
 		orgQuery := fmt.Sprintf(`
-			SELECT 
+			SELECT
 				d.node_id,
 				d.name,
 				d.description,
@@ -102,7 +102,7 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 				AND du.user_id = $1
 			)
 			AND d.state NOT IN ('DELETED', 'DELETING')
-		`, orgId, orgNodeIds[i], orgNames[i], orgId, orgId)
+		`, orgId, strings.ReplaceAll(orgNodeIds[i], "'", "''"), strings.ReplaceAll(orgNames[i], "'", "''"), orgId, orgId)
 
 		unionParts = append(unionParts, orgQuery)
 	}
