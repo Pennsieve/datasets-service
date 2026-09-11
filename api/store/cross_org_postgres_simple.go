@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+
 	"github.com/lib/pq"
 	"github.com/pennsieve/datasets-service/api/models"
 	pg "github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 // CrossOrgQueriesSimple implements CrossOrgStore
@@ -73,12 +74,22 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 	// Step 2: Build a UNION query for all organizations
 	var unionParts []string
 	var queryArgs []interface{}
-	queryArgs = append(queryArgs, userId) // Add userId once for all UNION queries
+	queryArgs = append(queryArgs, userId) // $1, shared by all UNION branches
 
 	for i, orgId := range orgIds {
-		// Build the query part for this organization
+		// Build the query part for this organization.
 		// Note: Users with permission_bit = 1 are guests and cannot be part of teams,
-		// so we only check dataset_user table for direct access
+		// so we only check dataset_user table for direct access.
+		//
+		// org_id and the "%d".datasets/dataset_user schema names come from
+		// organizations.id (an integer from our own DB) and are safe to format in.
+		// org_node_id and org_name are bound as parameters, not interpolated:
+		// org_name is user-settable (workspace rename), so string-formatting it
+		// would be a stored SQL-injection vector.
+		queryArgs = append(queryArgs, orgNodeIds[i], orgNames[i])
+		nodeIDPlaceholder := len(queryArgs) - 1 // index of orgNodeIds[i]
+		namePlaceholder := len(queryArgs)       // index of orgNames[i]
+
 		orgQuery := fmt.Sprintf(`
 			SELECT
 				d.node_id,
@@ -92,8 +103,8 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 				d.data_use_agreement_id,
 				d.id,
 				%d as org_id,
-				'%s' as org_node_id,
-				'%s' as org_name
+				$%d::text as org_node_id,
+				$%d::text as org_name
 			FROM "%d".datasets d
 			WHERE EXISTS (
 				-- User has direct access (guests cannot be part of teams)
@@ -102,7 +113,7 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 				AND du.user_id = $1
 			)
 			AND d.state NOT IN ('DELETED', 'DELETING')
-		`, orgId, strings.ReplaceAll(orgNodeIds[i], "'", "''"), strings.ReplaceAll(orgNames[i], "'", "''"), orgId, orgId)
+		`, orgId, nodeIDPlaceholder, namePlaceholder, orgId, orgId)
 
 		unionParts = append(unionParts, orgQuery)
 	}
@@ -211,7 +222,11 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 			SELECT COUNT(*) FROM all_shared_datasets
 		`, strings.Join(unionParts, " UNION ALL "))
 
-		err := q.db.QueryRowContext(ctx, countQuery, userId).Scan(&totalCount)
+		// The UNION parts reference $1 (userId) plus a bound org_node_id/org_name
+		// pair per branch; reuse those same args (everything except the trailing
+		// limit/offset appended above).
+		countArgs := queryArgs[:len(queryArgs)-2]
+		err := q.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 		if err != nil && err != sql.ErrNoRows {
 			log.WithError(err).Error("Failed to get total count")
 			return nil, fmt.Errorf("failed to get total count: %w", err)
