@@ -39,6 +39,13 @@ type snsStore struct {
 func (s *snsStore) TriggerWorkerLambda(ctx context.Context, input models.ManifestWorkerInput) error {
 
 	jsonInput, err := json.Marshal(input)
+	if err != nil {
+		// Previously this error was discarded: err was overwritten by the
+		// Publish call below, so a marshal failure silently published an
+		// empty/garbage message body to the topic.
+		log.Error("Error marshalling SNS message: ", err)
+		return err
+	}
 
 	params := sns.PublishInput{
 		Message:  aws.String(string(jsonInput)),

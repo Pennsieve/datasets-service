@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -11,13 +10,16 @@ import (
 	"github.com/pennsieve/datasets-service/service/handler"
 	"github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
 	"github.com/sirupsen/logrus"
-	"log"
 )
 
 func init() {
+	// Cold-start failures below are all "this Lambda cannot serve any request"
+	// conditions. They previously used three different exit mechanisms
+	// (panic, stdlib log.Fatalf, logrus); converge on a single structured
+	// error log followed by os.Exit(1).
 	db, err := pgdb.ConnectRDS()
 	if err != nil {
-		panic(fmt.Sprintf("unable to connect to RDS database: %s", err))
+		logrus.WithError(err).Fatal("unable to connect to RDS database")
 	}
 	logrus.Info("connected to RDS database")
 	handler.PennsieveDB = db
@@ -25,12 +27,12 @@ func init() {
 	// Get SSM variables
 	handler.HandlerVars, err = service.GetAppClientVars(context.Background())
 	if err != nil {
-		log.Fatalf("Unable to get SSM vars: %v\n", err)
+		logrus.WithError(err).Fatal("unable to get SSM vars")
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
-		log.Fatalf("LoadDefaultConfig: %v\n", err)
+		logrus.WithError(err).Fatal("unable to load default AWS config")
 	}
 
 	handler.S3Client = s3.NewFromConfig(cfg)

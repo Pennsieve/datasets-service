@@ -115,8 +115,12 @@ func (presigner Presigner) GetObject(
 		opts.Expires = time.Duration(lifetimeSecs * int64(time.Second))
 	})
 	if err != nil {
-		log.Printf("Couldn't get a presigned request to get %v:%v. Here's why: %v\n",
-			bucketName, objectKey, err)
+		// Was logged via Printf, which logrus emits at Info level: a real
+		// presign failure looked like an informational message.
+		log.WithError(err).WithFields(log.Fields{
+			"s3Bucket": bucketName,
+			"s3Key":    objectKey,
+		}).Error("could not get a presigned request for S3 object")
 	}
 	return request, err
 }

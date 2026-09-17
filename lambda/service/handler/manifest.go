@@ -34,6 +34,7 @@ func (h *ManifestHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResp
 
 	manifestResult, err := h.datasetsService.GetManifest(ctx, datasetNodeId)
 	if err != nil {
+		h.logger.WithError(err).WithField("datasetNodeId", datasetNodeId).Error("get manifest failed")
 		return nil, err
 	}
 
