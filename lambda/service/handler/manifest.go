@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/permissions"
+	"log/slog"
 	"net/http"
 )
 
@@ -34,7 +36,9 @@ func (h *ManifestHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResp
 
 	manifestResult, err := h.datasetsService.GetManifest(ctx, datasetNodeId)
 	if err != nil {
-		h.logger.WithError(err).WithField("datasetNodeId", datasetNodeId).Error("get manifest failed")
+		h.logger.Error("get manifest failed",
+			slog.Any(logging.ErrorKey, err),
+			slog.String(logging.DatasetNodeIdKey, datasetNodeId))
 		return nil, err
 	}
 

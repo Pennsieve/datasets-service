@@ -3,6 +3,8 @@ package handler
 import (
     "context"
     "github.com/aws/aws-lambda-go/events"
+    "github.com/pennsieve/datasets-service/api/logging"
+    "log/slog"
     "math"
     "net/http"
 )
@@ -48,7 +50,11 @@ func (h *SharedDatasetsHandler) get(ctx context.Context) (*events.APIGatewayV2HT
     // Call cross-workspace service to get shared datasets
     page, err := h.crossWorkspaceDatasetsService.GetSharedDatasetsPage(ctx, userId, limit, offset)
     if err != nil {
-        h.logger.Errorf("get shared datasets failed: %s", err)
+        h.logger.Error("get shared datasets failed",
+            slog.Any(logging.ErrorKey, err),
+            slog.Int(logging.UserIdKey, userId),
+            slog.Int(logging.LimitKey, limit),
+            slog.Int(logging.OffsetKey, offset))
         return nil, err
     }
 

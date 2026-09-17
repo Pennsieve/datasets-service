@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/permissions"
+	"log/slog"
 	"math"
 	"net/http"
 )
@@ -60,7 +62,10 @@ func (h *TrashcanHandler) get(ctx context.Context) (*events.APIGatewayV2HTTPResp
 	case models.FolderNotFoundError:
 		return h.logAndBuildError(err.Error(), http.StatusBadRequest), nil
 	default:
-		h.logger.Errorf("get trashcan failed: %s", err)
+		h.logger.Error("get trashcan failed",
+			slog.Any(logging.ErrorKey, err),
+			slog.String(logging.DatasetNodeIdKey, datasetID),
+			slog.String(logging.PackageNodeIdKey, rootNodeId))
 		return nil, err
 	}
 
