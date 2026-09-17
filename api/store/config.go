@@ -3,24 +3,13 @@ package store
 import (
 	"database/sql"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-func init() {
-	log.SetFormatter(&log.JSONFormatter{})
-	if level, ok := os.LookupEnv("LOG_LEVEL"); !ok {
-		log.SetLevel(log.InfoLevel)
-	} else {
-		if ll, err := log.ParseLevel(level); err == nil {
-			log.SetLevel(ll)
-		} else {
-			log.SetLevel(log.InfoLevel)
-			log.Warnf("could not set log level to %q: %v", level, err)
-		}
-
-	}
-}
+// Logging configuration used to live here in an init() that duplicated the one
+// in the handler package (and a third in api/logging). Go's init() ordering
+// made "whichever ran last" decide the effective level. The Lambda entrypoint
+// now calls logging.SetDefaultFromEnv once instead.
 
 type PostgresConfig struct {
 	Host     string

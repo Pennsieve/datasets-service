@@ -9,6 +9,7 @@ import (
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	"github.com/stretchr/testify/assert"
+	"log/slog"
 	"testing"
 )
 
@@ -221,7 +222,7 @@ func TestGetTrashcanPaginated(t *testing.T) {
 
 	db.ExecSQLFile("folder-nav-test.sql")
 	defer db.Truncate(2, "packages")
-	store := NewQueries(db, 2)
+	store := NewQueries(db, 2, slog.Default())
 	for rootId, expectedLevel := range rootNodeIdToExpectedLevel {
 		t.Run(fmt.Sprintf("GetTrashcan starting at folder %d", rootId), func(t *testing.T) {
 			CheckGetTrashcanLevel(t, store, rootId, expectedLevel)

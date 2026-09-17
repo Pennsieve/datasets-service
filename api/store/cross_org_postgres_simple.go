@@ -6,20 +6,28 @@ import (
 	"fmt"
 	"strings"
 
+	"log/slog"
+
 	"github.com/lib/pq"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	pg "github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
-	log "github.com/sirupsen/logrus"
 )
 
 // CrossOrgQueriesSimple implements CrossOrgStore
 type crossOrgQueriesSimple struct {
-	db pg.DBTX
+	db     pg.DBTX
+	Logger *slog.Logger
 }
 
-// NewCrossOrgQueriesSimple creates a new cross-org store that uses dynamic SQL
-func NewCrossOrgQueriesSimple(db pg.DBTX) CrossOrgStore {
-	return &crossOrgQueriesSimple{db: db}
+// NewCrossOrgQueriesSimple creates a new cross-org store that uses dynamic SQL.
+// Takes the request-scoped logger so DB failures carry the invocation's
+// trace/request context; a nil logger falls back to slog.Default().
+func NewCrossOrgQueriesSimple(db pg.DBTX, logger *slog.Logger) CrossOrgStore {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &crossOrgQueriesSimple{db: db, Logger: logger}
 }
 
 // GetSharedDatasetsForUser retrieves all datasets shared with a user across all organizations
@@ -46,7 +54,9 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 
 	orgRows, err := q.db.QueryContext(ctx, orgsQuery, userId)
 	if err != nil {
-		log.WithError(err).Error("Failed to query organizations")
+		q.Logger.Error("failed to query organizations",
+			slog.Any(logging.ErrorKey, err),
+			slog.Int(logging.UserIdKey, userId))
 		return nil, fmt.Errorf("failed to query organizations: %w", err)
 	}
 	defer orgRows.Close()
@@ -59,7 +69,9 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 		var orgNodeId string
 		var orgName string
 		if err := orgRows.Scan(&orgId, &orgNodeId, &orgName); err != nil {
-			log.WithError(err).Error("Failed to scan organization")
+			q.Logger.Error("failed to scan organization",
+				slog.Any(logging.ErrorKey, err),
+				slog.Int(logging.UserIdKey, userId))
 			return nil, fmt.Errorf("failed to scan organization: %w", err)
 		}
 		orgIds = append(orgIds, orgId)
@@ -157,7 +169,10 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 	// Execute the query
 	rows, err := q.db.QueryContext(ctx, fullQuery, queryArgs...)
 	if err != nil {
-		log.WithError(err).WithField("query", fullQuery).Error("Failed to query shared datasets")
+		q.Logger.Error("failed to query shared datasets",
+			slog.Any(logging.ErrorKey, err),
+			slog.Int(logging.UserIdKey, userId),
+			slog.String(logging.QueryKey, fullQuery))
 		return nil, fmt.Errorf("failed to query shared datasets: %w", err)
 	}
 	defer rows.Close()
@@ -190,7 +205,9 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 			&totalCount,
 		)
 		if err != nil {
-			log.WithError(err).Error("Failed to scan dataset row")
+			q.Logger.Error("failed to scan dataset row",
+				slog.Any(logging.ErrorKey, err),
+				slog.Int(logging.UserIdKey, userId))
 			return nil, fmt.Errorf("failed to scan dataset: %w", err)
 		}
 
@@ -228,7 +245,9 @@ func (q *crossOrgQueriesSimple) GetSharedDatasetsForUser(ctx context.Context, us
 		countArgs := queryArgs[:len(queryArgs)-2]
 		err := q.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&totalCount)
 		if err != nil && err != sql.ErrNoRows {
-			log.WithError(err).Error("Failed to get total count")
+			q.Logger.Error("failed to get total count",
+				slog.Any(logging.ErrorKey, err),
+				slog.Int(logging.UserIdKey, userId))
 			return nil, fmt.Errorf("failed to get total count: %w", err)
 		}
 	}

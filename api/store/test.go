@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"log/slog"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -97,7 +98,8 @@ func (tdb *TestDB) CloseRows(rows *sql.Rows) {
 
 func (tdb *TestDB) Queries(orgId int) *Queries {
 	return &Queries{
-		db:    tdb.DB,
-		OrgId: orgId,
+		db:     tdb.DB,
+		OrgId:  orgId,
+		Logger: slog.Default(),
 	}
 }

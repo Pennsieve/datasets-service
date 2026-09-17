@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/pennsieve/datasets-service/api/store"
@@ -25,7 +26,7 @@ func TestGetSharedDatasetsPage(t *testing.T) {
 		db.TruncatePennsieve("users")
 	}()
 
-	service := NewCrossWorkspaceDatasetsService(db.DB)
+	service := NewCrossWorkspaceDatasetsService(db.DB, slog.Default())
 
 	tests := []struct {
 		name           string
@@ -150,7 +151,7 @@ func TestGetSharedDatasetsPageEdgeCases(t *testing.T) {
 		db.TruncatePennsieve("users")
 	}()
 
-	service := NewCrossWorkspaceDatasetsService(db.DB)
+	service := NewCrossWorkspaceDatasetsService(db.DB, slog.Default())
 
 	t.Run("negative limit should be handled gracefully", func(t *testing.T) {
 		page, err := service.GetSharedDatasetsPage(context.Background(), 9001, -1, 0)
