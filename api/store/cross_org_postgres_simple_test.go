@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestGetSharedDatasetsForUser_ApostropheInOrgName(t *testing.T) {
 
 	defer withOrgName(t, db, "Michael's Workspace")()
 
-	store := NewCrossOrgQueriesSimple(db.DB)
+	store := NewCrossOrgQueriesSimple(db.DB, slog.Default())
 	page, err := store.GetSharedDatasetsForUser(context.Background(), sharedUserID, 10, 0)
 	require.NoError(t, err, "apostrophe in org name must not break the query")
 	require.NotNil(t, page)
@@ -65,7 +66,7 @@ func TestGetSharedDatasetsForUser_InjectionInOrgName(t *testing.T) {
 
 	defer withOrgName(t, db, payload)()
 
-	store := NewCrossOrgQueriesSimple(db.DB)
+	store := NewCrossOrgQueriesSimple(db.DB, slog.Default())
 	page, err := store.GetSharedDatasetsForUser(context.Background(), sharedUserID, 10, 0)
 	require.NoError(t, err, "injection payload in org name must be handled safely")
 	require.NotNil(t, page)

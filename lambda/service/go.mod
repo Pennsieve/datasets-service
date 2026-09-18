@@ -11,9 +11,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.31
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.60.1
 	github.com/aws/aws-sdk-go-v2/service/sns v1.31.5
+	github.com/google/uuid v1.3.0
 	github.com/pennsieve/datasets-service/api v0.0.0-20230217205046-0ae8eb70cca8
 	github.com/pennsieve/pennsieve-go-core v1.13.7
-	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.9.0
 
 )
@@ -40,10 +40,10 @@ require (
 	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,12 +11,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	transport "github.com/aws/smithy-go/endpoints"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/store"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageType"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/url"
@@ -111,7 +112,7 @@ func TestGetTrashcanPageDeleting(t *testing.T) {
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
 
-	service := NewDatasetsService(db.DB, getS3Client(), &MockSnSClient{}, &models.HandlerVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsService(db.DB, getS3Client(), &MockSnSClient{}, &models.HandlerVars{S3Bucket: mfBucket}, orgId, slog.Default())
 	for rootId, expectedPage := range rootNodeIdToExpectedPage {
 		t.Run(fmt.Sprintf("GetTrashcanPage starting at folder %s", rootId), func(t *testing.T) {
 			actual, err := service.GetTrashcanPage(context.Background(), datasetNodeId, rootId, limit, offset)
@@ -132,7 +133,7 @@ func TestGetTrashcanPageEmpty(t *testing.T) {
 	mockSnsFactory := MockSnsFactory{}
 
 	mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
-	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket}, orgId)
+	service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket}, orgId, slog.Default())
 	page, err := service.GetTrashcanPage(context.Background(), "N:dataset:dddd", "", 100, 0)
 	if assert.NoError(t, err) {
 		assert.NotNil(t, page.Packages)
@@ -177,7 +178,7 @@ func TestGetTrashcanPageErrors(t *testing.T) {
 		mfBucket := getEnv("MANIFEST_FILES_BUCKET", "manifest-files-bucket")
 		snsTopic := getEnv("CREATE_MANIFEST_SNS_TOPIC", "manifest-files-bucket")
 
-		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}, orgId)
+		service := NewDatasetsServiceWithFactory(&mockFactory, &mockS3Factory, &mockSnsFactory, &models.HandlerVars{S3Bucket: mfBucket, SnsTopic: snsTopic}, orgId, slog.Default())
 		t.Run(tName, func(t *testing.T) {
 			_, err := service.GetTrashcanPage(context.Background(), "N:dataset:7890", expected.rootNodeId, 10, 0)
 			if assert.Error(t, err) {
@@ -214,7 +215,7 @@ func TestGetManifest(t *testing.T) {
 
 	s3Client := getS3Client()
 	snsClient := MockSnSClient{}
-	service := NewDatasetsService(db.DB, s3Client, &snsClient, &handleVars, orgId)
+	service := NewDatasetsService(db.DB, s3Client, &snsClient, &handleVars, orgId, slog.Default())
 
 	result, err := service.GetManifest(context.Background(), datasetNodeId)
 	assert.NoError(t, err)
@@ -437,7 +438,9 @@ func getS3Client() *s3.Client {
 	})
 
 	if err != nil {
-		log.Info(err)
+		// Typically "bucket already exists" when the test bucket survives from
+		// an earlier run; not fatal to the test setup.
+		slog.Info("could not create test bucket", slog.Any(logging.ErrorKey, err))
 	}
 
 	return s3Client

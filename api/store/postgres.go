@@ -8,11 +8,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/packageInfo/packageState"
 	"github.com/pennsieve/pennsieve-go-core/pkg/models/pgdb"
 	pg "github.com/pennsieve/pennsieve-go-core/pkg/queries/pgdb"
-	log "github.com/sirupsen/logrus"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -82,19 +83,23 @@ type DatasetsStoreFactory interface {
 	ExecStoreTx(ctx context.Context, orgId int, fn func(store DatasetsStore) error) error
 }
 
-func NewPostgresStoreFactory(pennsieveDB *sql.DB) DatasetsStoreFactory {
-	return &datasetsStoreFactory{DB: pennsieveDB}
+// NewPostgresStoreFactory takes the request-scoped logger so that DB failures
+// carry the same trace/request context as the handler log lines for the same
+// invocation. Pass slog.Default() outside of a request.
+func NewPostgresStoreFactory(pennsieveDB *sql.DB, logger *slog.Logger) DatasetsStoreFactory {
+	return &datasetsStoreFactory{DB: pennsieveDB, Logger: logger}
 }
 
 type datasetsStoreFactory struct {
 	DB       *sql.DB
 	S3Client *s3.Client
+	Logger   *slog.Logger
 }
 
 // NewSimpleStore returns a DatasetsStore instance that
 // will run statements directly on database
 func (d *datasetsStoreFactory) NewSimpleStore(orgId int) DatasetsStore {
-	return NewQueries(d.DB, orgId)
+	return NewQueries(d.DB, orgId, d.Logger)
 }
 
 // ExecStoreTx will execute the function fn, passing in a new DatasetsStore instance that
@@ -107,7 +112,7 @@ func (d *datasetsStoreFactory) ExecStoreTx(ctx context.Context, orgId int, fn fu
 		return err
 	}
 
-	q := NewQueries(tx, orgId)
+	q := NewQueries(tx, orgId, d.Logger)
 	err = fn(q)
 	if err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
@@ -120,12 +125,18 @@ func (d *datasetsStoreFactory) ExecStoreTx(ctx context.Context, orgId int, fn fu
 }
 
 type Queries struct {
-	db    pg.DBTX
-	OrgId int
+	db     pg.DBTX
+	OrgId  int
+	Logger *slog.Logger
 }
 
-func NewQueries(db pg.DBTX, orgId int) *Queries {
-	return &Queries{db: db, OrgId: orgId}
+// NewQueries takes the request-scoped logger. A nil logger falls back to
+// slog.Default() so that test helpers and any non-request caller still log.
+func NewQueries(db pg.DBTX, orgId int, logger *slog.Logger) *Queries {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Queries{db: db, OrgId: orgId, Logger: logger}
 }
 
 func (q *Queries) GetDatasetByNodeId(ctx context.Context, dsNodeId string) (*pgdb.Dataset, error) {
@@ -249,7 +260,10 @@ func (q *Queries) GetDatasetManifest(ctx context.Context, datasetId int64) ([]mo
 
 	rows, err := q.db.QueryContext(ctx, query)
 	if err != nil {
-		log.Println("ERROR: ", err)
+		q.Logger.Error("error querying dataset manifest",
+			slog.Any(logging.ErrorKey, err),
+			slog.Int(logging.OrgIdKey, q.OrgId),
+			slog.Int64(logging.DatasetIdKey, datasetId))
 		return nil, err
 	}
 	defer rows.Close()
@@ -267,7 +281,10 @@ func (q *Queries) GetDatasetManifest(ctx context.Context, datasetId int64) ([]mo
 			&m.FileUUID)
 
 		if err != nil {
-			log.Println("ERROR: ", err)
+			q.Logger.Error("error scanning dataset manifest row",
+				slog.Any(logging.ErrorKey, err),
+				slog.Int(logging.OrgIdKey, q.OrgId),
+				slog.Int64(logging.DatasetIdKey, datasetId))
 			return nil, err
 		}
 

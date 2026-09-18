@@ -8,11 +8,11 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/pennsieve/datasets-service/api/logging"
 	"github.com/pennsieve/datasets-service/api/models"
 	"github.com/pennsieve/datasets-service/api/service"
 	"github.com/pennsieve/pennsieve-go-core/pkg/authorizer"
-	log "github.com/sirupsen/logrus"
-	"os"
+	"log/slog"
 	"strconv"
 )
 
@@ -23,20 +23,10 @@ var (
 	HandlerVars *models.HandlerVars
 )
 
-func init() {
-	log.SetFormatter(&log.JSONFormatter{})
-	if level, ok := os.LookupEnv("LOG_LEVEL"); !ok {
-		log.SetLevel(log.InfoLevel)
-	} else {
-		if ll, err := log.ParseLevel(level); err == nil {
-			log.SetLevel(ll)
-		} else {
-			log.SetLevel(log.InfoLevel)
-			log.Warnf("could not set log level to %q: %v", level, err)
-		}
-
-	}
-}
+// Logging configuration used to live in an init() here that duplicated one in
+// api/store and a third in api/logging. Go runs init() functions in
+// dependency/import order, so "whichever ran last" silently decided the
+// effective level. main.go now calls logging.SetDefaultFromEnv once instead.
 
 func DatasetsServiceHandler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 	claims := authorizer.ParseClaims(request.RequestContext.Authorizer.Lambda)
@@ -59,29 +49,41 @@ func DatasetsServiceHandler(ctx context.Context, request events.APIGatewayV2HTTP
 type RequestHandler struct {
 	request   *events.APIGatewayV2HTTPRequest
 	requestID string
+	traceID   string
 
 	method      string
 	path        string
 	queryParams map[string]string
 	body        string
 
-	logger                        *log.Entry
+	logger                        *slog.Logger
 	datasetsService               service.DatasetsService
 	crossWorkspaceDatasetsService service.CrossWorkspaceDatasetsService
 	claims                        *authorizer.Claims
 }
 
-// NewHandler creates a RequestHandler that has its logger field initialized with useful fields.
+// NewHandler creates a RequestHandler whose logger carries, for the life of the
+// invocation, both the API Gateway per-hop request id and this service's
+// internal trace id. They are deliberately separate fields: the AWS id is minted
+// fresh at each hop and only correlates within it, while the trace id is taken
+// from an inbound correlation header when the caller supplied one, so it can tie
+// together one logical operation across services. This logger is threaded down
+// into the service and store layers so DB/S3/SNS failures carry the same context.
 func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Claims) *RequestHandler {
 	method := request.RequestContext.HTTP.Method
 	path := request.RequestContext.HTTP.Path
 	reqID := request.RequestContext.RequestID
-	logger := log.WithFields(log.Fields{
-		"requestID": reqID,
-	})
+	trace, traceSource := traceID(request)
+
+	logger := slog.Default().With(
+		slog.String(logging.ApiGatewayRequestIdKey, reqID),
+		slog.String(logging.TraceIdKey, trace),
+		slog.String(logging.TraceIdSourceKey, traceSource),
+	)
 	requestHandler := RequestHandler{
 		request:   request,
 		requestID: reqID,
+		traceID:   trace,
 
 		method:      method,
 		path:        path,
@@ -91,12 +93,12 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 		logger: logger,
 		claims: claims,
 	}
-	logger.WithFields(log.Fields{
-		"method":      requestHandler.method,
-		"path":        requestHandler.path,
-		"queryParams": requestHandler.queryParams,
-		"requestBody": requestHandler.body,
-		"claims":      requestHandler.claims}).Info("creating RequestHandler")
+	logger.Info("creating RequestHandler",
+		slog.String(logging.MethodKey, requestHandler.method),
+		slog.String(logging.PathKey, requestHandler.path),
+		slog.Any(logging.QueryParamsKey, requestHandler.queryParams),
+		slog.String(logging.RequestBodyKey, requestHandler.body),
+		slog.Any(logging.ClaimsKey, requestHandler.claims))
 
 	return &requestHandler
 }
@@ -105,7 +107,7 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 // has been initialized to use PennsieveDB as the SQL database pointed to the
 // workspace in the RequestHandler's OrgClaim.
 func (h *RequestHandler) WithDefaultService() *RequestHandler {
-	srv := service.NewDatasetsService(PennsieveDB, S3Client, SNSClient, HandlerVars, int(h.claims.OrgClaim.IntId))
+	srv := service.NewDatasetsService(PennsieveDB, S3Client, SNSClient, HandlerVars, int(h.claims.OrgClaim.IntId), h.logger)
 	h.datasetsService = srv
 	return h
 }
@@ -113,7 +115,7 @@ func (h *RequestHandler) WithDefaultService() *RequestHandler {
 // WithCrossWorkspaceService adds a new service.CrossWorkspaceDatasetsService to the RequestHandler
 // for operations that span multiple workspaces
 func (h *RequestHandler) WithCrossWorkspaceService() *RequestHandler {
-	srv := service.NewCrossWorkspaceDatasetsService(PennsieveDB)
+	srv := service.NewCrossWorkspaceDatasetsService(PennsieveDB, h.logger)
 	h.crossWorkspaceDatasetsService = srv
 	return h
 }
@@ -126,7 +128,7 @@ func (h *RequestHandler) WithService(dsService service.DatasetsService) *Request
 }
 
 func (h *RequestHandler) logAndBuildError(message string, status int) *events.APIGatewayV2HTTPResponse {
-	h.logger.Error(message)
+	h.logger.Error(message, slog.Int(logging.StatusKey, status))
 	errorBody := fmt.Sprintf("{'message': '%s (requestID: %s)'}", message, h.requestID)
 	return buildResponseFromString(errorBody, status)
 }
@@ -152,7 +154,8 @@ func (h *RequestHandler) queryParamAsInt(paramName string, minValue, maxValue, d
 func (h *RequestHandler) buildResponse(body any, status int) (*events.APIGatewayV2HTTPResponse, error) {
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
-		h.logger.Errorf("error marshalling body: [%v]: %s", body, err)
+		h.logger.Error("error marshalling response body",
+			slog.Any(logging.ErrorKey, err))
 		return nil, err
 	}
 	return buildResponseFromString(string(bodyBytes), status), nil
