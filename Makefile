@@ -62,7 +62,7 @@ package:
 	@echo ""
 	@mkdir -p $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)
 	cd lambda/service; \
-  		env GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/bootstrap; \
+  		env GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags lambda.norpc -o $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/bootstrap; \
 		cd $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/ ; \
 			zip -r $(WORKING_DIR)/lambda/bin/$(SERVICE_PACK)/$(PACKAGE_NAME) .
 
