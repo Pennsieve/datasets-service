@@ -97,7 +97,6 @@ func NewHandler(request *events.APIGatewayV2HTTPRequest, claims *authorizer.Clai
 		slog.String(logging.MethodKey, requestHandler.method),
 		slog.String(logging.PathKey, requestHandler.path),
 		slog.Any(logging.QueryParamsKey, requestHandler.queryParams),
-		slog.String(logging.RequestBodyKey, requestHandler.body),
 		slog.Any(logging.ClaimsKey, requestHandler.claims))
 
 	return &requestHandler
